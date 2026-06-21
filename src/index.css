@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Nunito+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@400;500&family=Roboto:wght@300;400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-brand-negroConfianza font-sans antialiased;
+    font-family: 'Inter', 'Roboto', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', 'Roboto', sans-serif;
+  }
+}
+
+/* Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-slate-100 rounded-full;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 hover:bg-slate-400 rounded-full transition-colors;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  @apply bg-white/85 backdrop-blur-md border border-white/20 shadow-sm;
+}
+
+.glass-card {
+  @apply bg-white/70 backdrop-blur-sm border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300;
+}
+
+/* Micro-animations */
+.hover-lift {
+  @apply transition-transform duration-300 ease-out hover:-translate-y-0.5;
+}
+
+.hover-glow {
+  @apply transition-all duration-300 hover:shadow-lg hover:shadow-brand-moradoDesarrollo/5;
+}
+
+/* Custom indicator animations */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.95); }
+}
+
+.pulse-soft {
+  animation: pulse-soft 2s infinite ease-in-out;
+}
