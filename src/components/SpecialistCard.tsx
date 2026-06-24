@@ -58,7 +58,7 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
   return (
     <div 
       onClick={() => setIsExpanded(!isExpanded)}
-      className="glass-card bg-white p-5 rounded-2xl border border-slate-100 flex flex-col justify-between hover-lift hover-glow h-full cursor-pointer transition-all duration-200 select-none"
+      className="glass-card bg-white p-5 rounded-2xl border border-slate-100 flex flex-col justify-between hover-lift hover-glow h-fit cursor-pointer transition-all duration-200 select-none"
     >
       <div className="space-y-4">
         {/* Top: Avatar, Name & Status */}

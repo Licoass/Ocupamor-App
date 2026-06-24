@@ -93,7 +93,7 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
   return (
     <div 
       onClick={() => setIsExpanded(!isExpanded)}
-      className="glass-card flex flex-col justify-between p-5 rounded-2xl border-l-[6px] hover-lift hover-glow h-full cursor-pointer transition-all duration-200 select-none"
+      className="glass-card flex flex-col justify-between p-5 rounded-2xl border-l-[6px] hover-lift hover-glow h-fit cursor-pointer transition-all duration-200 select-none"
       style={{ borderLeftColor: specialtyColor }}
     >
       <div className="space-y-3">
@@ -151,9 +151,17 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
                 <div className="flex flex-col gap-1.5">
                   {assignedSpecs.map(spec => (
                     <div key={spec.id} className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                      <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200/50">
+                      <div 
+                        className="rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200/50"
+                        style={{ width: '24px', height: '24px' }}
+                      >
                         {spec.foto_perfil ? (
-                          <img src={spec.foto_perfil} alt={spec.nombre_completo} className="h-full w-full object-cover" />
+                          <img 
+                            src={spec.foto_perfil} 
+                            alt={spec.nombre_completo} 
+                            className="object-cover" 
+                            style={{ width: '100%', height: '100%' }}
+                          />
                         ) : (
                           <span className="text-[8px] font-bold text-slate-500">
                             {spec.nombre_completo.split(' ').pop()?.substring(0, 2).toUpperCase() || 'SP'}

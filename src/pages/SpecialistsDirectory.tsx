@@ -174,7 +174,7 @@ export const SpecialistsDirectory: React.FC = () => {
 
         {/* Specialists grid */}
         {filteredSpecs.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
             {filteredSpecs.map((spec) => (
               <SpecialistCard
                 key={spec.id}
