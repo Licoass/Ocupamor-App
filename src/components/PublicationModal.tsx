@@ -116,12 +116,7 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
         return;
       }
 
-      // Check Google Drive Link format if provided
-      if (current.url_drive_revision && !current.url_drive_revision.startsWith('https://drive.google.com/')) {
-        setSaveState('error');
-        setErrorMessage('El link de Drive debe comenzar con https://drive.google.com/');
-        return;
-      }
+
 
       setErrorMessage(null);
       const success = await savePublication(current);
@@ -328,7 +323,7 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
                           className="flex items-center gap-1 bg-brand-moradoDesarrollo/10 border border-brand-moradoDesarrollo/20 text-brand-moradoDesarrollo text-xs font-bold px-2 py-0.5 rounded-lg shrink-0"
                           onClick={(e) => e.stopPropagation()} // Prevent opening dropdown when clicking on chip
                         >
-                          <div className="h-4.5 w-4.5 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
+                          <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
                             {spec.foto_perfil ? (
                               <img src={spec.foto_perfil} alt={spec.nombre_completo} className="h-full w-full object-cover" />
                             ) : (
@@ -337,7 +332,9 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
                               </span>
                             )}
                           </div>
-                          <span className="max-w-[80px] truncate">{spec.nombre_completo.split(' ')[0]}</span>
+                          <span className="max-w-[180px] truncate text-[11px] font-bold">
+                            {spec.nombre_completo} <span className="text-[9px] font-semibold text-slate-400">({spec.especialidades?.nombre || 'General'})</span>
+                          </span>
                           <button
                             type="button"
                             onClick={() => handleToggleSpecialist(spec.id)}
@@ -381,7 +378,9 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
                               </span>
                             )}
                           </div>
-                          <span className="truncate">{spec.nombre_completo}</span>
+                          <span className="truncate">
+                            {spec.nombre_completo} <span className="text-[10px] text-slate-400 font-normal ml-1">({spec.especialidades?.nombre || 'General'})</span>
+                          </span>
                         </div>
                         <div className="flex items-center shrink-0 ml-2">
                           <input
@@ -405,7 +404,7 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
             {/* Drive link */}
             <div className="space-y-1.5 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                Link de Google Drive (Revisión)
+                Enlace del Diseño / Revisión
               </label>
               <input
                 type="url"
@@ -413,7 +412,7 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
                 onChange={(e) => handleChange('url_drive_revision', e.target.value)}
                 onFocus={() => handleInputFocus('url_drive_revision')}
                 onBlur={handleInputBlur}
-                placeholder="https://drive.google.com/..."
+                placeholder="Ej. https://canva.link/... o link de Drive"
                 className="w-full py-2.5 px-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-moradoDesarrollo/10 focus:border-brand-moradoDesarrollo transition-all"
               />
             </div>

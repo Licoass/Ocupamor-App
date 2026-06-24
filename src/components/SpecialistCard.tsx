@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Specialist } from '../types';
 import { FolderOpen, Edit3, Trash2, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -29,11 +29,13 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
   onEdit,
   onDelete
 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const specialtyColor = specialist.especialidades?.color_tema || '#94a3b8';
   const hasBirthday = !!specialist.fecha_cumpleanos;
 
   // Instagram URL resolver
   const handleInstagramClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!specialist.instagram) {
       e.preventDefault();
       return;
@@ -54,7 +56,10 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
   };
 
   return (
-    <div className="glass-card bg-white p-5 rounded-2xl border border-slate-100 flex flex-col justify-between hover-lift hover-glow h-full">
+    <div 
+      onClick={() => setIsExpanded(!isExpanded)}
+      className="glass-card bg-white p-5 rounded-2xl border border-slate-100 flex flex-col justify-between hover-lift hover-glow h-full cursor-pointer transition-all duration-200 select-none"
+    >
       <div className="space-y-4">
         {/* Top: Avatar, Name & Status */}
         <div className="flex items-start justify-between gap-3">
@@ -122,6 +127,61 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
         )}
       </div>
 
+      {/* Expanded Details section */}
+      {isExpanded && (
+        <div 
+          onClick={(e) => e.stopPropagation()} // Prevent toggling when clicking details
+          className="mt-4 pt-4 border-t border-slate-100/80 space-y-3 text-xs text-slate-600 animate-in fade-in slide-in-from-top-1 duration-150 select-text"
+        >
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Nombre Completo</span>
+            <span className="font-semibold text-slate-800 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate">
+              {specialist.nombre_completo}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Especialidad</span>
+              <span className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate">
+                {specialist.especialidades?.nombre || 'General'}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Matrícula / Registro</span>
+              <span className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate">
+                {specialist.federacion_matricula || 'N/A'}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Instagram</span>
+              <span className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate">
+                {specialist.instagram ? `@${specialist.instagram.replace('@', '')}` : 'N/A'}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Cumpleaños</span>
+              <span className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate">
+                {specialist.fecha_cumpleanos ? formatBirthday(specialist.fecha_cumpleanos) : 'N/A'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Carpeta Drive Personal</span>
+            <span 
+              className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate cursor-pointer hover:bg-slate-100/50 transition-colors"
+              title="Haz clic para seleccionar todo"
+            >
+              {specialist.url_drive_personal}
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="pt-4 border-t border-slate-50 mt-4 flex items-center justify-between gap-2">
         {/* Instagram Account */}
         {specialist.instagram ? (
@@ -143,20 +203,21 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
             href={specialist.url_drive_personal}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="p-1.5 text-slate-400 hover:text-brand-fucsiaEmocion hover:bg-slate-50 rounded-lg transition-colors"
             title="Carpeta Google Drive"
           >
             <FolderOpen size={16} />
           </a>
           <button
-            onClick={() => onEdit(specialist)}
+            onClick={(e) => { e.stopPropagation(); onEdit(specialist); }}
             className="p-1.5 text-slate-400 hover:text-brand-moradoDesarrollo hover:bg-slate-50 rounded-lg transition-colors"
             title="Editar especialista"
           >
             <Edit3 size={15} />
           </button>
           <button
-            onClick={() => onDelete(specialist.id)}
+            onClick={(e) => { e.stopPropagation(); onDelete(specialist.id); }}
             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-50 rounded-lg transition-colors"
             title="Eliminar especialista"
           >
