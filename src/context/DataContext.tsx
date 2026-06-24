@@ -15,6 +15,8 @@ interface DataContextType {
   saveSpecialist: (spec: Partial<Specialist>) => Promise<boolean>;
   deletePublication: (id: string) => Promise<boolean>;
   deleteSpecialist: (id: string) => Promise<boolean>;
+  importPublications: (parsedPubs: any[]) => Promise<{ successCount: number; skippedCount: number }>;
+  importEfemerides: (parsedEfemerides: any[]) => Promise<{ successCount: number; skippedCount: number }>;
   fetchData: () => Promise<void>;
   conflictNotification: string | null;
   setConflictNotification: (msg: string | null) => void;
@@ -87,6 +89,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const specialtiesRef = useRef(specialties);
+  useEffect(() => {
+    specialtiesRef.current = specialties;
+  }, [specialties]);
+
   useEffect(() => {
     fetchData();
 
@@ -97,8 +104,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setPublications(current => {
           if (eventType === 'INSERT') {
+            // Check for duplicates
+            if (current.some(p => p.id === newRecord.id)) return current;
+            
             // Append with specialty joined
-            const specialtyObj = specialties.find(s => s.id === newRecord.especialidad_id);
+            const specialtyObj = specialtiesRef.current.find(s => s.id === newRecord.especialidad_id);
             const inserted = { ...newRecord, especialidades: specialtyObj } as Publication;
             return [...current, inserted];
           }
@@ -114,20 +124,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             }
 
-            const specialtyObj = specialties.find(s => s.id === newRecord.especialidad_id);
+            const specialtyObj = specialtiesRef.current.find(s => s.id === newRecord.especialidad_id);
             return current.map(p => p.id === newRecord.id ? { ...newRecord, especialidades: specialtyObj } as Publication : p);
           }
           if (eventType === 'DELETE') {
-            return current.filter(p => p.id === oldRecord.id);
+            return current.filter(p => p.id !== oldRecord.id);
           }
           return current;
         });
       })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
-          setSyncStatus('error');
+          console.warn('Realtime channel warning: Publications replication offline. Falling back to REST polling.');
         } else if (status === 'SUBSCRIBED') {
-          setSyncStatus('synced');
+          console.log('Realtime channel subscribed.');
         }
       });
 
@@ -137,7 +147,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setSpecialists(current => {
           if (eventType === 'INSERT') {
-            const specialtyObj = specialties.find(s => s.id === newRecord.especialidad_id);
+            if (current.some(s => s.id === newRecord.id)) return current;
+            const specialtyObj = specialtiesRef.current.find(s => s.id === newRecord.especialidad_id);
             const inserted = { ...newRecord, especialidades: specialtyObj } as Specialist;
             return [...current, inserted];
           }
@@ -150,18 +161,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             }
 
-            const specialtyObj = specialties.find(s => s.id === newRecord.especialidad_id);
+            const specialtyObj = specialtiesRef.current.find(s => s.id === newRecord.especialidad_id);
             return current.map(s => s.id === newRecord.id ? { ...newRecord, especialidades: specialtyObj } as Specialist : s);
           }
           if (eventType === 'DELETE') {
-            return current.filter(s => s.id === oldRecord.id);
+            return current.filter(s => s.id !== oldRecord.id);
           }
           return current;
         });
       })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
-          setSyncStatus('error');
+          console.warn('Realtime channel warning: Specialists replication offline. Falling back to REST polling.');
         }
       });
 
@@ -181,14 +192,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updated_at: new Date().toISOString()
       };
 
-      let error;
+      if (payload.deadline === '') {
+        payload.deadline = null;
+      }
+
+      if ('especialidades' in payload) {
+        delete payload.especialidades;
+      }
+
+      let data, error;
       if (isNew) {
-        ({ error } = await supabase.from('publicaciones').insert(payload));
+        ({ data, error } = await supabase.from('publicaciones').insert(payload).select());
       } else {
-        ({ error } = await supabase.from('publicaciones').update(payload).eq('id', pub.id));
+        ({ data, error } = await supabase.from('publicaciones').update(payload).eq('id', pub.id).select());
       }
 
       if (error) throw error;
+
+      if (data && data.length > 0) {
+        const savedRecord = data[0];
+        setPublications(current => {
+          const specialtyObj = specialtiesRef.current.find(s => s.id === savedRecord.especialidad_id);
+          const formatted = { ...savedRecord, especialidades: specialtyObj } as Publication;
+          if (isNew) {
+            if (current.some(p => p.id === formatted.id)) return current;
+            return [...current, formatted];
+          } else {
+            return current.map(p => p.id === formatted.id ? formatted : p);
+          }
+        });
+      }
+
       setSyncStatus('synced');
       return true;
     } catch (err: any) {
@@ -204,6 +238,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error } = await supabase.from('publicaciones').delete().eq('id', id);
       if (error) throw error;
+      
+      setPublications(current => current.filter(p => p.id !== id));
       setSyncStatus('synced');
       return true;
     } catch (err: any) {
@@ -224,14 +260,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updated_at: new Date().toISOString()
       };
 
-      let error;
+      if (payload.fecha_cumpleanos === '') {
+        payload.fecha_cumpleanos = null;
+      }
+
+      if ('especialidades' in payload) {
+        delete payload.especialidades;
+      }
+
+      let data, error;
       if (isNew) {
-        ({ error } = await supabase.from('especialistas').insert(payload));
+        ({ data, error } = await supabase.from('especialistas').insert(payload).select());
       } else {
-        ({ error } = await supabase.from('especialistas').update(payload).eq('id', spec.id));
+        ({ data, error } = await supabase.from('especialistas').update(payload).eq('id', spec.id).select());
       }
 
       if (error) throw error;
+
+      if (data && data.length > 0) {
+        const savedRecord = data[0];
+        setSpecialists(current => {
+          const specialtyObj = specialtiesRef.current.find(s => s.id === savedRecord.especialidad_id);
+          const formatted = { ...savedRecord, especialidades: specialtyObj } as Specialist;
+          if (isNew) {
+            if (current.some(s => s.id === formatted.id)) return current;
+            return [...current, formatted];
+          } else {
+            return current.map(s => s.id === formatted.id ? formatted : s);
+          }
+        });
+      }
+
       setSyncStatus('synced');
       return true;
     } catch (err: any) {
@@ -247,6 +306,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error } = await supabase.from('especialistas').delete().eq('id', id);
       if (error) throw error;
+      
+      setSpecialists(current => current.filter(s => s.id !== id));
       setSyncStatus('synced');
       return true;
     } catch (err: any) {
@@ -254,6 +315,120 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSyncStatus('error');
       setErrorMessage(err.message || 'Error al eliminar especialista.');
       return false;
+    }
+  };
+
+  // Bulk imports
+  const importPublications = async (parsedPubs: any[]) => {
+    setSyncStatus('syncing');
+    try {
+      // Fetch existing publications to filter duplicates
+      const { data: existingPubs, error: fetchErr } = await supabase
+        .from('publicaciones')
+        .select('mes, anio, titulo');
+
+      if (fetchErr) throw fetchErr;
+
+      const normalizeText = (t: string) => {
+        if (!t) return '';
+        return t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      };
+
+      const existingSet = new Set(
+        existingPubs.map(p => `${p.mes}_${p.anio}_${normalizeText(p.titulo)}`)
+      );
+
+      const filteredInserts = parsedPubs.filter(p => {
+        const key = `${p.mes}_${p.anio}_${normalizeText(p.titulo)}`;
+        return !existingSet.has(key);
+      });
+
+      if (filteredInserts.length === 0) {
+        setSyncStatus('synced');
+        return { successCount: 0, skippedCount: parsedPubs.length };
+      }
+
+      const { data: insertedData, error: insertErr } = await supabase
+        .from('publicaciones')
+        .insert(filteredInserts)
+        .select();
+
+      if (insertErr) throw insertErr;
+
+      if (insertedData && insertedData.length > 0) {
+        const formatted = insertedData.map(record => {
+          const specialtyObj = specialtiesRef.current.find(s => s.id === record.especialidad_id);
+          return { ...record, especialidades: specialtyObj } as Publication;
+        });
+
+        setPublications(current => {
+          const currentIds = new Set(current.map(p => p.id));
+          const newOnly = formatted.filter(p => !currentIds.has(p.id));
+          return [...current, ...newOnly];
+        });
+      }
+
+      setSyncStatus('synced');
+      return { successCount: insertedData?.length || 0, skippedCount: parsedPubs.length - (insertedData?.length || 0) };
+    } catch (err: any) {
+      console.error('Error importing publications:', err);
+      setSyncStatus('error');
+      setErrorMessage(err.message || 'Error al importar las publicaciones.');
+      throw err;
+    }
+  };
+
+  const importEfemerides = async (parsedEfemerides: any[]) => {
+    setSyncStatus('syncing');
+    try {
+      // Fetch existing efemerides
+      const { data: existingEfemerides, error: fetchErr } = await supabase
+        .from('efemerides')
+        .select('nombre, dia, mes');
+
+      if (fetchErr) throw fetchErr;
+
+      const normalizeText = (t: string) => {
+        if (!t) return '';
+        return t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      };
+
+      const existingSet = new Set(
+        existingEfemerides.map(e => `${e.dia}_${e.mes}_${normalizeText(e.nombre)}`)
+      );
+
+      const filteredInserts = parsedEfemerides.filter(e => {
+        const key = `${e.dia}_${e.mes}_${normalizeText(e.nombre)}`;
+        return !existingSet.has(key);
+      });
+
+      if (filteredInserts.length === 0) {
+        setSyncStatus('synced');
+        return { successCount: 0, skippedCount: parsedEfemerides.length };
+      }
+
+      const { data: insertedData, error: insertErr } = await supabase
+        .from('efemerides')
+        .insert(filteredInserts)
+        .select();
+
+      if (insertErr) throw insertErr;
+
+      if (insertedData && insertedData.length > 0) {
+        setEfemerides(current => {
+          const currentIds = new Set(current.map(e => e.id));
+          const newOnly = (insertedData as Efemeride[]).filter(e => !currentIds.has(e.id));
+          return [...current, ...newOnly];
+        });
+      }
+
+      setSyncStatus('synced');
+      return { successCount: insertedData?.length || 0, skippedCount: parsedEfemerides.length - (insertedData?.length || 0) };
+    } catch (err: any) {
+      console.error('Error importing efemerides:', err);
+      setSyncStatus('error');
+      setErrorMessage(err.message || 'Error al importar las efemérides.');
+      throw err;
     }
   };
 
@@ -271,6 +446,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       saveSpecialist,
       deletePublication,
       deleteSpecialist,
+      importPublications,
+      importEfemerides,
       fetchData,
       conflictNotification,
       setConflictNotification
