@@ -741,12 +741,19 @@ export const PublicationsManager: React.FC = () => {
         </div>
 
         {/* Canva review link card */}
-        <div className="col-span-2 lg:col-span-1 bg-brand-fucsiaEmocion text-white rounded-2xl p-4 shadow-md shadow-brand-fucsiaEmocion/20 flex flex-col justify-center items-center text-center gap-1 hover-lift transition-all relative group select-none">
+        <div 
+          onClick={() => {
+            if (currentMonthlyLink?.url_canva) {
+              window.open(currentMonthlyLink.url_canva, '_blank', 'noopener,noreferrer');
+            }
+          }}
+          className={`col-span-2 lg:col-span-1 bg-brand-fucsiaEmocion text-white rounded-2xl p-4 shadow-md shadow-brand-fucsiaEmocion/20 flex flex-col justify-center items-center text-center gap-1 hover-lift transition-all relative group select-none ${currentMonthlyLink?.url_canva ? 'cursor-pointer' : ''}`}
+        >
           {/* Edit Button in corner */}
           {!isReadOnly && (
             <button 
               onClick={(e) => { e.stopPropagation(); handleEditLinkOpen(); }}
-              className="absolute top-2 right-2 p-1 rounded-lg bg-black/10 hover:bg-black/25 text-white/90 transition-all opacity-80 hover:scale-105"
+              className="absolute top-2 right-2 p-1 rounded-lg bg-black/10 hover:bg-black/25 text-white/90 transition-all opacity-80 hover:scale-105 z-10"
               title="Configurar enlace de Canva para este mes"
             >
               <Edit3 size={12} />
@@ -756,17 +763,11 @@ export const PublicationsManager: React.FC = () => {
           <Share2 size={20} className="mb-0.5" />
           <span className="text-xs font-bold">Diseños en Canva</span>
           {currentMonthlyLink?.url_canva ? (
-            <a 
-              href={currentMonthlyLink.url_canva}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[9px] opacity-90 hover:opacity-100 font-semibold underline block max-w-full truncate"
-              title={currentMonthlyLink.url_canva}
-            >
+            <span className="text-[11px] font-bold underline opacity-90 group-hover:opacity-100 transition-opacity mt-1">
               Abrir Canva ↗
-            </a>
+            </span>
           ) : (
-            <span className="text-[9px] opacity-75 font-semibold italic">Sin configurar</span>
+            <span className="text-[10px] opacity-75 font-semibold italic mt-1">Sin configurar</span>
           )}
         </div>
       </div>

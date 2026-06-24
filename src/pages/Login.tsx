@@ -69,6 +69,37 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     }
   };
 
+  const handleGuestLogin = async () => {
+    setLoading(true);
+    setError(null);
+    setIsReadOnly(true);
+    localStorage.setItem('ocupamor_readonly', 'true');
+
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: 'admin@ocupamor.com',
+        password: 'Ocupamor2026',
+      });
+
+      if (authError) {
+        if (import.meta.env.DEV) {
+          console.warn('Supabase Auth error. Falling back to mock session for development.');
+          localStorage.setItem('ocupamor_session_mock', 'true');
+          onLoginSuccess();
+          return;
+        }
+        setError('Error al iniciar sesión de lectura: ' + authError.message);
+      } else {
+        onLoginSuccess();
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError('Error de red al conectar con Supabase.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-3xl border border-slate-100 shadow-xl p-8 space-y-6 hover-glow transition-all duration-300">
@@ -129,11 +160,23 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             disabled={loading || !password}
             className="w-full bg-brand-moradoDesarrollo text-white font-bold py-3 px-4 rounded-xl text-sm shadow-md shadow-brand-moradoDesarrollo/20 hover:bg-brand-moradoDesarrollo/95 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
           >
-            {loading ? 'Iniciando sesión...' : 'Entrar'}
+            {loading ? 'Iniciando sesión...' : 'Entrar como Editor'}
           </button>
-          <p className="text-[10px] text-slate-400 text-center font-bold uppercase tracking-wider mt-2.5">
-            Claves: <span className="text-slate-600 font-extrabold">Ocupamor2026</span> (Editor) • <span className="text-slate-600 font-extrabold">OcupamorLector</span> (Modo Lector)
-          </p>
+          
+          <div className="flex items-center my-4">
+            <div className="flex-1 border-t border-slate-100"></div>
+            <span className="px-3 text-[10px] text-slate-400 font-bold uppercase tracking-wider">o</span>
+            <div className="flex-1 border-t border-slate-100"></div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGuestLogin}
+            disabled={loading}
+            className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 text-slate-600 font-bold py-3 px-4 rounded-xl text-sm transition-all duration-200 active:scale-[0.98] disabled:opacity-50"
+          >
+            Ingresar como Lector (Solo Vista)
+          </button>
         </form>
         
         {/* Footer info */}
