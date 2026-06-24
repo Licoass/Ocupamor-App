@@ -72,38 +72,31 @@ export const SpecialistModal: React.FC<SpecialistModalProps> = ({
     }
   }, [conflictNotification, specialist]);
 
-  // Debounced auto-save effect
-  useEffect(() => {
-    if (!isDirtyRef.current) return;
-
+  const handleSave = async () => {
     setSaveState('saving');
-    const timer = setTimeout(async () => {
-      const current = formStateRef.current;
-      if (!current.nombre_completo || !current.especialidad_id || !current.url_drive_personal) {
-        setSaveState('error');
-        setErrorMessage('Nombre, Especialidad y Link de Drive son requeridos.');
-        return;
-      }
+    const current = formState;
+    if (!current.nombre_completo || !current.especialidad_id || !current.url_drive_personal) {
+      setSaveState('error');
+      setErrorMessage('Nombre, Especialidad y Link de Drive son requeridos.');
+      return;
+    }
 
-      // Validate Google Drive personal link
-      if (!current.url_drive_personal.startsWith('https://drive.google.com/')) {
-        setSaveState('error');
-        setErrorMessage('El link de Drive personal debe comenzar con https://drive.google.com/');
-        return;
-      }
+    // Validate Google Drive personal link
+    if (!current.url_drive_personal.startsWith('https://drive.google.com/')) {
+      setSaveState('error');
+      setErrorMessage('El link de Drive personal debe comenzar con https://drive.google.com/');
+      return;
+    }
 
-      setErrorMessage(null);
-      const success = await saveSpecialist(current);
-      if (success) {
-        setSaveState('saved');
-        isDirtyRef.current = false;
-      } else {
-        setSaveState('error');
-      }
-    }, 1000); // 1s debounce
-
-    return () => clearTimeout(timer);
-  }, [formState, saveSpecialist]);
+    setErrorMessage(null);
+    const success = await saveSpecialist(current);
+    if (success) {
+      setSaveState('saved');
+      onClose();
+    } else {
+      setSaveState('error');
+    }
+  };
 
   const handleChange = (field: keyof Specialist, value: any) => {
     isDirtyRef.current = true;
@@ -156,7 +149,7 @@ export const SpecialistModal: React.FC<SpecialistModalProps> = ({
               {specialist ? 'Editar Especialista' : 'Agregar Especialista'}
             </h2>
             <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-              {specialist ? 'Auto-guardado habilitado' : 'Formulario de Creación'}
+              {specialist ? 'Formulario de Edición' : 'Formulario de Creación'}
             </p>
           </div>
           <button 
@@ -347,7 +340,22 @@ export const SpecialistModal: React.FC<SpecialistModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-colors"
             >
-              Cerrar
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saveState === 'saving'}
+              className="bg-brand-moradoDesarrollo hover:bg-brand-moradoDesarrollo/95 disabled:bg-slate-300 text-white font-bold px-5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-sm shadow-brand-moradoDesarrollo/10 transition-colors"
+            >
+              {saveState === 'saving' ? (
+                <>
+                  <RefreshCw size={12} className="animate-spin" />
+                  <span>Guardando...</span>
+                </>
+              ) : (
+                <span>Guardar</span>
+              )}
             </button>
           </div>
         </div>

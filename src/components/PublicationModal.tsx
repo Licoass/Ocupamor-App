@@ -102,34 +102,24 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
     }
   }, [conflictNotification, publication]);
 
-  // Debounced auto-save effect
-  useEffect(() => {
-    if (!isDirtyRef.current) return;
-
+  const handleSave = async () => {
     setSaveState('saving');
-    const timer = setTimeout(async () => {
-      // Validate required fields before saving
-      const current = formStateRef.current;
-      if (!current.titulo || !current.especialidad_id) {
-        setSaveState('error');
-        setErrorMessage('Título y Especialidad son requeridos.');
-        return;
-      }
+    const current = formState;
+    if (!current.titulo || !current.especialidad_id) {
+      setSaveState('error');
+      setErrorMessage('Título y Especialidad son requeridos.');
+      return;
+    }
 
-
-
-      setErrorMessage(null);
-      const success = await savePublication(current);
-      if (success) {
-        setSaveState('saved');
-        isDirtyRef.current = false;
-      } else {
-        setSaveState('error');
-      }
-    }, 1000); // 1s debounce for typing
-
-    return () => clearTimeout(timer);
-  }, [formState, savePublication]);
+    setErrorMessage(null);
+    const success = await savePublication(current);
+    if (success) {
+      setSaveState('saved');
+      onClose();
+    } else {
+      setSaveState('error');
+    }
+  };
 
   const handleChange = (field: keyof Publication, value: any) => {
     isDirtyRef.current = true;
@@ -177,7 +167,7 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
               {publication ? 'Editar Publicación' : 'Agregar Nueva Publicación'}
             </h2>
             <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-              {publication ? 'Auto-guardado habilitado' : 'Formulario de Creación'}
+              {publication ? 'Formulario de Edición' : 'Formulario de Creación'}
             </p>
           </div>
           <button 
@@ -445,7 +435,7 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-white shrink-0">
-          {/* Auto-save Status Indicator */}
+          {/* Status Indicator */}
           <div className="flex items-center gap-1.5 text-xs font-semibold">
             {saveState === 'saved' && (
               <span className="flex items-center gap-1 text-emerald-600">
@@ -473,7 +463,22 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-colors"
             >
-              Cerrar
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saveState === 'saving'}
+              className="bg-brand-moradoDesarrollo hover:bg-brand-moradoDesarrollo/95 disabled:bg-slate-300 text-white font-bold px-5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-sm shadow-brand-moradoDesarrollo/10 transition-colors"
+            >
+              {saveState === 'saving' ? (
+                <>
+                  <RefreshCw size={12} className="animate-spin" />
+                  <span>Guardando...</span>
+                </>
+              ) : (
+                <span>Guardar</span>
+              )}
             </button>
           </div>
         </div>

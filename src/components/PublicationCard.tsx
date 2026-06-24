@@ -151,7 +151,7 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
                 <div className="flex flex-col gap-1.5">
                   {assignedSpecs.map(spec => (
                     <div key={spec.id} className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                      <div className="h-5.5 w-5.5 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200/50">
+                      <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200/50">
                         {spec.foto_perfil ? (
                           <img src={spec.foto_perfil} alt={spec.nombre_completo} className="h-full w-full object-cover" />
                         ) : (
