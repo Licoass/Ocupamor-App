@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { Specialist } from '../types';
 import { FolderOpen, Edit3, Trash2, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -22,15 +22,15 @@ interface SpecialistCardProps {
   specialist: Specialist;
   onEdit: (spec: Specialist) => void;
   onDelete: (id: string) => void;
+  onViewDetails: (spec: Specialist) => void;
 }
 
 export const SpecialistCard: React.FC<SpecialistCardProps> = ({
   specialist,
   onEdit,
-  onDelete
+  onDelete,
+  onViewDetails
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const specialtyColor = specialist.especialidades?.color_tema || '#94a3b8';
   const hasBirthday = !!specialist.fecha_cumpleanos;
 
   // Instagram URL resolver
@@ -57,7 +57,7 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
 
   return (
     <div 
-      onClick={() => setIsExpanded(!isExpanded)}
+      onClick={() => onViewDetails(specialist)}
       className="glass-card bg-white p-5 rounded-2xl border border-slate-100 flex flex-col justify-between hover-lift hover-glow h-fit cursor-pointer transition-all duration-200 select-none"
     >
       <div className="space-y-4">
@@ -104,18 +104,29 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
           )}
         </div>
 
-        {/* Specialty badge */}
-        <div>
-          <span 
-            className="text-[10px] font-bold px-2 py-0.5 rounded-full border inline-block"
-            style={{ 
-              color: specialtyColor, 
-              borderColor: `${specialtyColor}30`, 
-              backgroundColor: `${specialtyColor}08` 
-            }}
-          >
-            {specialist.especialidades?.nombre || 'General'}
-          </span>
+        {/* Specialty badges */}
+        <div className="flex flex-wrap gap-1.5">
+          {specialist.especialidades && specialist.especialidades.length > 0 ? (
+            specialist.especialidades.map(spec => (
+              <span 
+                key={spec.id}
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full border inline-block animate-in fade-in"
+                style={{ 
+                  color: spec.color_tema, 
+                  borderColor: `${spec.color_tema}30`, 
+                  backgroundColor: `${spec.color_tema}08` 
+                }}
+              >
+                {spec.nombre}
+              </span>
+            ))
+          ) : (
+            <span 
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full border inline-block text-slate-400 border-slate-200 bg-slate-50"
+            >
+              General
+            </span>
+          )}
         </div>
 
         {/* Birthday information if present */}
@@ -127,60 +138,7 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
         )}
       </div>
 
-      {/* Expanded Details section */}
-      {isExpanded && (
-        <div 
-          onClick={(e) => e.stopPropagation()} // Prevent toggling when clicking details
-          className="mt-4 pt-4 border-t border-slate-100/80 space-y-3 text-xs text-slate-600 animate-in fade-in slide-in-from-top-1 duration-150 select-text"
-        >
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Nombre Completo</span>
-            <span className="font-semibold text-slate-800 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate">
-              {specialist.nombre_completo}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Especialidad</span>
-              <span className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate">
-                {specialist.especialidades?.nombre || 'General'}
-              </span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Matrícula / Registro</span>
-              <span className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate">
-                {specialist.federacion_matricula || 'N/A'}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Instagram</span>
-              <span className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate">
-                {specialist.instagram ? `@${specialist.instagram.replace('@', '')}` : 'N/A'}
-              </span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Cumpleaños</span>
-              <span className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate">
-                {specialist.fecha_cumpleanos ? formatBirthday(specialist.fecha_cumpleanos) : 'N/A'}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Carpeta Drive Personal</span>
-            <span 
-              className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100 select-all block truncate cursor-pointer hover:bg-slate-100/50 transition-colors"
-              title="Haz clic para seleccionar todo"
-            >
-              {specialist.url_drive_personal}
-            </span>
-          </div>
-        </div>
-      )}
+      {/* Expanded details section removed in favor of modal popup details */}
 
       <div className="pt-4 border-t border-slate-50 mt-4 flex items-center justify-between gap-2">
         {/* Instagram Account */}

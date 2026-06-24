@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Specialist } from '../types';
 import { useData } from '../context/DataContext';
-import { X, Check, AlertCircle, RefreshCw, Upload, User } from 'lucide-react';
+import { X, Check, AlertCircle, RefreshCw, Upload, User, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface SpecialistModalProps {
   specialist: Specialist | null; // null if creating a new one
@@ -23,7 +23,7 @@ export const SpecialistModal: React.FC<SpecialistModalProps> = ({
   // Local form state
   const [formState, setFormState] = useState<Partial<Specialist>>({
     nombre_completo: '',
-    especialidad_id: '',
+    especialidades_ids: [],
     foto_perfil: '',
     instagram: '',
     federacion_matricula: 'MPPS:',
@@ -48,7 +48,7 @@ export const SpecialistModal: React.FC<SpecialistModalProps> = ({
       setFormState({
         id: specialist.id,
         nombre_completo: specialist.nombre_completo || '',
-        especialidad_id: specialist.especialidad_id || '',
+        especialidades_ids: specialist.especialidades_ids || (specialist.especialidad_id ? [specialist.especialidad_id] : []),
         foto_perfil: specialist.foto_perfil || '',
         instagram: specialist.instagram || '',
         federacion_matricula: specialist.federacion_matricula || 'MPPS:',
@@ -56,10 +56,10 @@ export const SpecialistModal: React.FC<SpecialistModalProps> = ({
         url_drive_personal: specialist.url_drive_personal || ''
       });
     } else {
-      const defaultSpecId = specialties[0]?.id || '';
+      const defaultSpecId = specialties[0]?.id ? [specialties[0].id] : [];
       setFormState(prev => ({
         ...prev,
-        especialidad_id: defaultSpecId
+        especialidades_ids: defaultSpecId
       }));
     }
   }, [specialist, specialties]);
@@ -72,12 +72,36 @@ export const SpecialistModal: React.FC<SpecialistModalProps> = ({
     }
   }, [conflictNotification, specialist]);
 
+  const [isSpecDropdownOpen, setIsSpecDropdownOpen] = useState(false);
+  const specDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (specDropdownRef.current && !specDropdownRef.current.contains(event.target as Node)) {
+        setIsSpecDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleToggleSpecialty = (specId: string) => {
+    const currentList = formState.especialidades_ids || [];
+    let newList;
+    if (currentList.includes(specId)) {
+      newList = currentList.filter(id => id !== specId);
+    } else {
+      newList = [...currentList, specId];
+    }
+    handleChange('especialidades_ids', newList);
+  };
+
   const handleSave = async () => {
     setSaveState('saving');
     const current = formState;
-    if (!current.nombre_completo || !current.especialidad_id || !current.url_drive_personal) {
+    if (!current.nombre_completo || !current.especialidades_ids || current.especialidades_ids.length === 0 || !current.url_drive_personal) {
       setSaveState('error');
-      setErrorMessage('Nombre, Especialidad y Link de Drive son requeridos.');
+      setErrorMessage('Nombre, al menos una Especialidad y Link de Drive son requeridos.');
       return;
     }
 
@@ -209,22 +233,80 @@ export const SpecialistModal: React.FC<SpecialistModalProps> = ({
 
           {/* Specialty selection */}
           <div className="space-y-1.5 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Especialidad *
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">
+              Especialidades *
             </label>
-            <select
-              value={formState.especialidad_id || ''}
-              onChange={(e) => handleChange('especialidad_id', e.target.value)}
-              className="w-full py-2.5 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-moradoDesarrollo/10 focus:border-brand-moradoDesarrollo transition-all"
-              required
-            >
-              <option value="" disabled>Seleccione especialidad</option>
-              {specialties.map(spec => (
-                <option key={spec.id} value={spec.id}>
-                  {spec.nombre}
-                </option>
-              ))}
-            </select>
+            
+            {/* Custom Multi-select Dropdown */}
+            <div ref={specDropdownRef} className="relative">
+              <div 
+                onClick={() => setIsSpecDropdownOpen(!isSpecDropdownOpen)}
+                className="w-full min-h-[42px] py-2 px-3 rounded-xl border border-slate-200 text-sm bg-white focus-within:ring-2 focus-within:ring-brand-moradoDesarrollo/10 focus-within:border-brand-moradoDesarrollo transition-all flex items-center justify-between gap-2 cursor-pointer select-none"
+              >
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {(formState.especialidades_ids || []).length === 0 ? (
+                    <span className="text-slate-400 text-xs font-medium">Seleccionar especialidades...</span>
+                  ) : (
+                    specialties
+                      .filter(s => formState.especialidades_ids?.includes(s.id))
+                      .map(spec => (
+                        <div 
+                          key={spec.id} 
+                          className="flex items-center gap-1.5 bg-brand-moradoDesarrollo/10 border border-brand-moradoDesarrollo/20 text-brand-moradoDesarrollo text-xs font-bold px-2 py-0.5 rounded-lg shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: spec.color_tema }} />
+                          <span>{spec.nombre}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSpecialty(spec.id)}
+                            className="text-brand-moradoDesarrollo hover:text-rose-600 transition-colors ml-0.5 p-0.5"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))
+                  )}
+                </div>
+                <div className="text-slate-400 shrink-0">
+                  {isSpecDropdownOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+              </div>
+
+              {isSpecDropdownOpen && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200/80 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {specialties.map(spec => {
+                    const isSelected = formState.especialidades_ids?.includes(spec.id);
+                    return (
+                      <div
+                        key={spec.id}
+                        onClick={() => handleToggleSpecialty(spec.id)}
+                        className={`
+                          flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-pointer select-none transition-colors
+                          ${isSelected 
+                            ? 'bg-brand-moradoDesarrollo/5 text-brand-moradoDesarrollo' 
+                            : 'text-slate-600 hover:bg-slate-50'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: spec.color_tema }} />
+                          <span>{spec.nombre}</span>
+                        </div>
+                        <div className="flex items-center shrink-0 ml-2">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            readOnly
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-brand-moradoDesarrollo focus:ring-brand-moradoDesarrollo"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Instagram & Federation */}

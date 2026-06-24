@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DataProvider } from './context/DataContext';
+import { DataProvider, useData } from './context/DataContext';
 import { supabase } from './services/supabaseClient';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
@@ -9,7 +9,7 @@ import { ConsolidatedHistory } from './pages/ConsolidatedHistory';
 
 function MainApp() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [activeTab, setActiveTab] = useState<'planificador' | 'especialistas' | 'historial'>('planificador');
+  const { activeTab, setActiveTab } = useData();
 
   useEffect(() => {
     // 1. Check if mock session exists

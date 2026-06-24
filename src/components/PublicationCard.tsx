@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Publication, Specialist } from '../types';
+import { useData } from '../context/DataContext';
 import { Edit3, Trash2, Calendar, FileText, Film, Layers, Smartphone, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface PublicationCardProps {
@@ -15,7 +16,20 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
   onEdit,
   onDelete
 }) => {
+  const { focusedPublicationId, setFocusedPublicationId } = useData();
   const [isExpanded, setIsExpanded] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (focusedPublicationId && publication.id === focusedPublicationId) {
+      setIsExpanded(true);
+      const timer = setTimeout(() => {
+        cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setFocusedPublicationId(null);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [focusedPublicationId, publication.id, setFocusedPublicationId]);
   const specialtyColor = publication.especialidades?.color_tema || '#94a3b8';
   const format = publication.formato;
   const status = publication.estado;
@@ -92,6 +106,7 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
 
   return (
     <div 
+      ref={cardRef}
       onClick={() => setIsExpanded(!isExpanded)}
       className="glass-card flex flex-col justify-between p-5 rounded-2xl border-l-[6px] hover-lift hover-glow h-fit cursor-pointer transition-all duration-200 select-none"
       style={{ borderLeftColor: specialtyColor }}

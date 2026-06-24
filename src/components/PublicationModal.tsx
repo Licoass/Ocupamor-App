@@ -323,7 +323,7 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
                             )}
                           </div>
                           <span className="max-w-[180px] truncate text-[11px] font-bold">
-                            {spec.nombre_completo} <span className="text-[9px] font-semibold text-slate-400">({spec.especialidades?.nombre || 'General'})</span>
+                            {spec.nombre_completo} <span className="text-[9px] font-semibold text-slate-400">({spec.especialidades?.map(s => s.nombre).join(', ') || 'General'})</span>
                           </span>
                           <button
                             type="button"
@@ -369,7 +369,7 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
                             )}
                           </div>
                           <span className="truncate">
-                            {spec.nombre_completo} <span className="text-[10px] text-slate-400 font-normal ml-1">({spec.especialidades?.nombre || 'General'})</span>
+                            {spec.nombre_completo} <span className="text-[10px] text-slate-400 font-normal ml-1">({spec.especialidades?.map(s => s.nombre).join(', ') || 'General'})</span>
                           </span>
                         </div>
                         <div className="flex items-center shrink-0 ml-2">

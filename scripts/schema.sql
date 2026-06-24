@@ -31,7 +31,8 @@ CREATE POLICY "Permitir todo a usuarios autenticados" ON especialidades
 CREATE TABLE IF NOT EXISTS especialistas (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     nombre_completo TEXT UNIQUE NOT NULL,
-    especialidad_id UUID NOT NULL REFERENCES especialidades(id) ON DELETE RESTRICT,
+    especialidad_id UUID REFERENCES especialidades(id) ON DELETE RESTRICT,
+    especialidades_ids UUID[] NOT NULL DEFAULT '{}',
     foto_perfil TEXT, -- URL to Supabase Storage bucket
     instagram TEXT, -- without @
     federacion_matricula TEXT NOT NULL DEFAULT 'MPPS:',

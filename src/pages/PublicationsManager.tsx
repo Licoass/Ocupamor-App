@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { useData } from '../context/DataContext';
 import type { Publication, Efemeride } from '../types';
@@ -20,12 +20,23 @@ export const PublicationsManager: React.FC = () => {
     deletePublication, 
     importPublications, 
     importEfemerides,
-    saveMonthlyLink
+    saveMonthlyLink,
+    focusedPublicationId
   } = useData();
 
   // Selected Month/Year state
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1); // 1-12
   const [selectedYear, setSelectedYear] = useState<number>(2026); // Excel is 2026
+
+  useEffect(() => {
+    if (focusedPublicationId) {
+      const pub = publications.find(p => p.id === focusedPublicationId);
+      if (pub) {
+        setSelectedMonth(pub.mes);
+        setSelectedYear(pub.anio);
+      }
+    }
+  }, [focusedPublicationId, publications]);
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);

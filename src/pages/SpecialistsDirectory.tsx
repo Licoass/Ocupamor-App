@@ -3,6 +3,7 @@ import { useData } from '../context/DataContext';
 import type { Specialist } from '../types';
 import { SpecialistCard } from '../components/SpecialistCard';
 import { SpecialistModal } from '../components/SpecialistModal';
+import { SpecialistDetailsModal } from '../components/SpecialistDetailsModal';
 import { Plus, Users } from 'lucide-react';
 
 export const SpecialistsDirectory: React.FC = () => {
@@ -14,12 +15,19 @@ export const SpecialistsDirectory: React.FC = () => {
   // Modal control
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSpec, setEditingSpec] = useState<Specialist | null>(null);
+  const [selectedSpecForDetails, setSelectedSpecForDetails] = useState<Specialist | null>(null);
 
   // Compute specialist counts per specialty
   const specialtyCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     specialists.forEach(s => {
-      counts[s.especialidad_id] = (counts[s.especialidad_id] || 0) + 1;
+      const ids = s.especialidades_ids && s.especialidades_ids.length > 0 
+        ? s.especialidades_ids 
+        : (s.especialidad_id ? [s.especialidad_id] : []);
+      
+      ids.forEach(id => {
+        counts[id] = (counts[id] || 0) + 1;
+      });
     });
     return counts;
   }, [specialists]);
@@ -27,7 +35,12 @@ export const SpecialistsDirectory: React.FC = () => {
   // Filter specialists list
   const filteredSpecs = useMemo(() => {
     if (activeSpecialtyId === 'all') return specialists;
-    return specialists.filter(s => s.especialidad_id === activeSpecialtyId);
+    return specialists.filter(s => {
+      const ids = s.especialidades_ids && s.especialidades_ids.length > 0 
+        ? s.especialidades_ids 
+        : (s.especialidad_id ? [s.especialidad_id] : []);
+      return ids.includes(activeSpecialtyId);
+    });
   }, [specialists, activeSpecialtyId]);
 
   const handleEdit = (spec: Specialist) => {
@@ -181,6 +194,7 @@ export const SpecialistsDirectory: React.FC = () => {
                 specialist={spec}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onViewDetails={(s) => setSelectedSpecForDetails(s)}
               />
             ))}
           </div>
@@ -198,6 +212,14 @@ export const SpecialistsDirectory: React.FC = () => {
         <SpecialistModal
           specialist={editingSpec}
           onClose={() => setIsModalOpen(false)}
+        />
+      )}
+
+      {/* Details Modal Popup */}
+      {selectedSpecForDetails && (
+        <SpecialistDetailsModal
+          specialist={selectedSpecForDetails}
+          onClose={() => setSelectedSpecForDetails(null)}
         />
       )}
 

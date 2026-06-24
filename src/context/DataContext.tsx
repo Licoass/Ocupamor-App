@@ -22,6 +22,11 @@ interface DataContextType {
   fetchData: () => Promise<void>;
   conflictNotification: string | null;
   setConflictNotification: (msg: string | null) => void;
+  // Navigation & Focus
+  activeTab: 'planificador' | 'especialistas' | 'historial';
+  setActiveTab: (tab: 'planificador' | 'especialistas' | 'historial') => void;
+  focusedPublicationId: string | null;
+  setFocusedPublicationId: (id: string | null) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -40,6 +45,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [monthlyLinks, setMonthlyLinks] = useState<MonthlyLink[]>([]);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('syncing');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'planificador' | 'especialistas' | 'historial'>('planificador');
+  const [focusedPublicationId, setFocusedPublicationId] = useState<string | null>(null);
   
   // Track what field the current user is active in, to identify edits conflicts
   const [activeEditing, setActiveEditing] = useState<{ id: string; type: 'publication' | 'specialist'; field: string } | null>(null);
@@ -66,9 +73,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 2. Fetch specialists
       const { data: listData, error: listErr } = await supabase
         .from('especialistas')
-        .select('*, especialidades:especialidad_id(*)');
+        .select('*');
       if (listErr) throw listErr;
-      setSpecialists(listData || []);
+      
+      const mappedSpecs = (listData || []).map(record => {
+        const specIds = record.especialidades_ids || (record.especialidad_id ? [record.especialidad_id] : []);
+        const matchedSpecs = specData?.filter(s => specIds.includes(s.id)) || [];
+        return {
+          ...record,
+          especialidades: matchedSpecs
+        } as Specialist;
+      });
+      setSpecialists(mappedSpecs);
 
       // 3. Fetch publications
       const { data: pubData, error: pubErr } = await supabase
@@ -158,8 +174,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSpecialists(current => {
           if (eventType === 'INSERT') {
             if (current.some(s => s.id === newRecord.id)) return current;
-            const specialtyObj = specialtiesRef.current.find(s => s.id === newRecord.especialidad_id);
-            const inserted = { ...newRecord, especialidades: specialtyObj } as Specialist;
+            const specIds = newRecord.especialidades_ids || (newRecord.especialidad_id ? [newRecord.especialidad_id] : []);
+            const matchedSpecs = specialtiesRef.current.filter(s => specIds.includes(s.id));
+            const inserted = { ...newRecord, especialidades: matchedSpecs } as Specialist;
             return [...current, inserted];
           }
           if (eventType === 'UPDATE') {
@@ -171,8 +188,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             }
 
-            const specialtyObj = specialtiesRef.current.find(s => s.id === newRecord.especialidad_id);
-            return current.map(s => s.id === newRecord.id ? { ...newRecord, especialidades: specialtyObj } as Specialist : s);
+            const specIds = newRecord.especialidades_ids || (newRecord.especialidad_id ? [newRecord.especialidad_id] : []);
+            const matchedSpecs = specialtiesRef.current.filter(s => specIds.includes(s.id));
+            return current.map(s => s.id === newRecord.id ? { ...newRecord, especialidades: matchedSpecs } as Specialist : s);
           }
           if (eventType === 'DELETE') {
             return current.filter(s => s.id !== oldRecord.id);
@@ -298,6 +316,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         payload.fecha_cumpleanos = null;
       }
 
+      if (payload.especialidades_ids && payload.especialidades_ids.length > 0) {
+        payload.especialidad_id = payload.especialidades_ids[0];
+      } else {
+        payload.especialidad_id = null;
+      }
+
       if ('especialidades' in payload) {
         delete payload.especialidades;
       }
@@ -314,8 +338,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data && data.length > 0) {
         const savedRecord = data[0];
         setSpecialists(current => {
-          const specialtyObj = specialtiesRef.current.find(s => s.id === savedRecord.especialidad_id);
-          const formatted = { ...savedRecord, especialidades: specialtyObj } as Specialist;
+          const specIds = savedRecord.especialidades_ids || (savedRecord.especialidad_id ? [savedRecord.especialidad_id] : []);
+          const matchedSpecs = specialtiesRef.current.filter(s => specIds.includes(s.id));
+          const formatted = { ...savedRecord, especialidades: matchedSpecs } as Specialist;
           if (isNew) {
             if (current.some(s => s.id === formatted.id)) return current;
             return [...current, formatted];
@@ -517,7 +542,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       saveMonthlyLink,
       fetchData,
       conflictNotification,
-      setConflictNotification
+      setConflictNotification,
+      activeTab,
+      setActiveTab,
+      focusedPublicationId,
+      setFocusedPublicationId
     }}>
       {children}
     </DataContext.Provider>

@@ -9,7 +9,8 @@ export interface Specialty {
 export interface Specialist {
   id: string;
   nombre_completo: string;
-  especialidad_id: string;
+  especialidad_id?: string | null;
+  especialidades_ids?: string[]; // Array of specialties
   foto_perfil: string | null;
   instagram: string | null;
   federacion_matricula: string;
@@ -18,7 +19,7 @@ export interface Specialist {
   created_at?: string;
   updated_at?: string;
   // Join helper field
-  especialidades?: Specialty;
+  especialidades?: Specialty[];
 }
 
 export type PublicationFormat = 'story' | 'feed' | 'carrusel' | 'video';
