@@ -7,7 +7,7 @@ import { PublicationModal } from '../components/PublicationModal';
 import { 
   Plus, Calendar as CalendarIcon, ClipboardList, Clock, 
   CheckCircle, FileText, ChevronDown, ChevronUp, Share2,
-  Upload, FileSpreadsheet, AlertCircle, X
+  Upload, FileSpreadsheet, AlertCircle, X, Edit3
 } from 'lucide-react';
 
 export const PublicationsManager: React.FC = () => {
@@ -16,9 +16,11 @@ export const PublicationsManager: React.FC = () => {
     specialists, 
     specialties, 
     efemerides, 
+    monthlyLinks,
     deletePublication, 
     importPublications, 
-    importEfemerides 
+    importEfemerides,
+    saveMonthlyLink
   } = useData();
 
   // Selected Month/Year state
@@ -452,8 +454,24 @@ export const PublicationsManager: React.FC = () => {
     { value: 12, label: 'Diciembre' }
   ];
 
-  // Drive general folder from JSON
-  const generalDriveLink = 'https://drive.google.com/drive/folders/12J6PWjxRoOCIc9rPc-aq_RXgOY9or-lP?usp=drive_link';
+  // Local state to manage the custom monthly Canva link edit modal
+  const [isEditingLink, setIsEditingLink] = useState(false);
+  const [tempLink, setTempLink] = useState('');
+
+  // Fetch Canva link for the currently selected month and year
+  const currentMonthlyLink = useMemo(() => {
+    return monthlyLinks.find(l => l.mes === selectedMonth && l.anio === selectedYear);
+  }, [monthlyLinks, selectedMonth, selectedYear]);
+
+  const handleEditLinkOpen = () => {
+    setTempLink(currentMonthlyLink?.url_canva || '');
+    setIsEditingLink(true);
+  };
+
+  const handleSaveLink = async () => {
+    await saveMonthlyLink(selectedMonth, selectedYear, tempLink.trim() || null);
+    setIsEditingLink(false);
+  };
 
   // Filter publications by current month and year
   const monthlyPubs = useMemo(() => {
@@ -706,17 +724,33 @@ export const PublicationsManager: React.FC = () => {
           </div>
         </div>
 
-        {/* Drive review link card */}
-        <a 
-          href={generalDriveLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="col-span-2 lg:col-span-1 bg-brand-fucsiaEmocion hover:bg-brand-fucsiaEmocion/95 text-white rounded-2xl p-4 shadow-md shadow-brand-fucsiaEmocion/20 flex flex-col justify-center items-center text-center gap-1 hover-lift transition-all"
-        >
-          <Share2 size={20} />
-          <span className="text-xs font-bold">Diseños en Revisión</span>
-          <span className="text-[9px] opacity-85 font-semibold">Abrir Google Drive</span>
-        </a>
+        {/* Canva review link card */}
+        <div className="col-span-2 lg:col-span-1 bg-brand-fucsiaEmocion text-white rounded-2xl p-4 shadow-md shadow-brand-fucsiaEmocion/20 flex flex-col justify-center items-center text-center gap-1 hover-lift transition-all relative group select-none">
+          {/* Edit Button in corner */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleEditLinkOpen(); }}
+            className="absolute top-2 right-2 p-1 rounded-lg bg-black/10 hover:bg-black/25 text-white/90 transition-all opacity-80 hover:scale-105"
+            title="Configurar enlace de Canva para este mes"
+          >
+            <Edit3 size={12} />
+          </button>
+          
+          <Share2 size={20} className="mb-0.5" />
+          <span className="text-xs font-bold">Diseños en Canva</span>
+          {currentMonthlyLink?.url_canva ? (
+            <a 
+              href={currentMonthlyLink.url_canva}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[9px] opacity-90 hover:opacity-100 font-semibold underline block max-w-full truncate"
+              title={currentMonthlyLink.url_canva}
+            >
+              Abrir Canva ↗
+            </a>
+          ) : (
+            <span className="text-[9px] opacity-75 font-semibold italic">Sin configurar</span>
+          )}
+        </div>
       </div>
 
       {/* Expandable holidays & special dates panel */}
@@ -884,6 +918,50 @@ export const PublicationsManager: React.FC = () => {
           defaultYear={selectedYear}
           onClose={() => setIsModalOpen(false)}
         />
+      )}
+
+      {/* Canva Link Edit Modal */}
+      {isEditingLink && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Configurar Enlace de Canva</h3>
+              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                {months.find(m => m.value === selectedMonth)?.label} {selectedYear}
+              </p>
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Enlace / URL del proyecto Canva
+              </label>
+              <input
+                type="url"
+                value={tempLink}
+                onChange={(e) => setTempLink(e.target.value)}
+                placeholder="https://www.canva.com/design/..."
+                className="w-full py-2.5 px-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand-moradoDesarrollo/10 focus:border-brand-moradoDesarrollo transition-all"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsEditingLink(false)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveLink}
+                className="px-4 py-1.5 bg-brand-moradoDesarrollo hover:bg-brand-moradoDesarrollo/95 text-white text-xs font-bold rounded-xl shadow-sm shadow-brand-moradoDesarrollo/10 transition-colors"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

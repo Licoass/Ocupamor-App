@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
-import type { Specialty, Specialist, Publication, Efemeride } from '../types';
+import type { Specialty, Specialist, Publication, Efemeride, MonthlyLink } from '../types';
 
 interface DataContextType {
   publications: Publication[];
   specialists: Specialist[];
   specialties: Specialty[];
   efemerides: Efemeride[];
+  monthlyLinks: MonthlyLink[];
   syncStatus: 'synced' | 'syncing' | 'error';
   errorMessage: string | null;
   activeEditing: { id: string; type: 'publication' | 'specialist'; field: string } | null;
@@ -17,6 +18,7 @@ interface DataContextType {
   deleteSpecialist: (id: string) => Promise<boolean>;
   importPublications: (parsedPubs: any[]) => Promise<{ successCount: number; skippedCount: number }>;
   importEfemerides: (parsedEfemerides: any[]) => Promise<{ successCount: number; skippedCount: number }>;
+  saveMonthlyLink: (mes: number, anio: number, urlCanva: string | null) => Promise<boolean>;
   fetchData: () => Promise<void>;
   conflictNotification: string | null;
   setConflictNotification: (msg: string | null) => void;
@@ -35,6 +37,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [specialists, setSpecialists] = useState<Specialist[]>([]);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [efemerides, setEfemerides] = useState<Efemeride[]>([]);
+  const [monthlyLinks, setMonthlyLinks] = useState<MonthlyLink[]>([]);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('syncing');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
@@ -80,6 +83,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select('*');
       if (holidayErr) throw holidayErr;
       setEfemerides(holidayData || []);
+
+      // 5. Fetch monthly links
+      const { data: linkData, error: linkErr } = await supabase
+        .from('enlaces_mensuales')
+        .select('*');
+      if (linkErr) throw linkErr;
+      setMonthlyLinks(linkData || []);
 
       setSyncStatus('synced');
     } catch (err: any) {
@@ -176,9 +186,33 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
+    const linkChannel = supabase.channel('realtime-links-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'enlaces_mensuales' }, (payload) => {
+        const { eventType, new: newRecord, old: oldRecord } = payload;
+        setMonthlyLinks(current => {
+          if (eventType === 'INSERT') {
+            if (current.some(l => l.id === newRecord.id)) return current;
+            return [...current, newRecord as MonthlyLink];
+          }
+          if (eventType === 'UPDATE') {
+            return current.map(l => l.id === newRecord.id ? (newRecord as MonthlyLink) : l);
+          }
+          if (eventType === 'DELETE') {
+            return current.filter(l => l.id !== oldRecord.id);
+          }
+          return current;
+        });
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+          console.warn('Realtime channel warning: Monthly links replication offline. Falling back to REST polling.');
+        }
+      });
+
     return () => {
       supabase.removeChannel(pubChannel);
       supabase.removeChannel(specChannel);
+      supabase.removeChannel(linkChannel);
     };
   }, []);
 
@@ -432,12 +466,44 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const saveMonthlyLink = async (mes: number, anio: number, urlCanva: string | null) => {
+    setSyncStatus('syncing');
+    try {
+      const { data, error } = await supabase
+        .from('enlaces_mensuales')
+        .upsert({ mes, anio, url_canva: urlCanva }, { onConflict: 'mes,anio' })
+        .select();
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setMonthlyLinks(current => {
+          const updated = data[0] as MonthlyLink;
+          if (current.some(l => l.id === updated.id || (l.mes === updated.mes && l.anio === updated.anio))) {
+            return current.map(l => (l.id === updated.id || (l.mes === updated.mes && l.anio === updated.anio)) ? updated : l);
+          } else {
+            return [...current, updated];
+          }
+        });
+      }
+
+      setSyncStatus('synced');
+      return true;
+    } catch (err: any) {
+      console.error('Error saving monthly link:', err);
+      setSyncStatus('error');
+      setErrorMessage(err.message || 'Error al guardar el enlace de Canva.');
+      return false;
+    }
+  };
+
   return (
     <DataContext.Provider value={{
       publications,
       specialists,
       specialties,
       efemerides,
+      monthlyLinks,
       syncStatus,
       errorMessage,
       activeEditing,
@@ -448,6 +514,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deleteSpecialist,
       importPublications,
       importEfemerides,
+      saveMonthlyLink,
       fetchData,
       conflictNotification,
       setConflictNotification

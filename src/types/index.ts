@@ -71,3 +71,12 @@ export interface RealtimeStatus {
   status: 'synced' | 'syncing' | 'error';
   message?: string;
 }
+
+export interface MonthlyLink {
+  id: string;
+  mes: number;
+  anio: number;
+  url_canva: string | null;
+  created_at?: string;
+  updated_at?: string;
+}

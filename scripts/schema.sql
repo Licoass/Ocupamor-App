@@ -131,6 +131,22 @@ CREATE OR REPLACE TRIGGER trg_especialista_birthday
 AFTER INSERT OR UPDATE OF fecha_cumpleanos ON especialistas
 FOR EACH ROW EXECUTE FUNCTION handle_especialista_birthday();
 
+-- 7. Table: enlaces_mensuales (Canva Links)
+CREATE TABLE IF NOT EXISTS enlaces_mensuales (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    mes INTEGER NOT NULL CHECK (mes >= 1 AND mes <= 12),
+    anio INTEGER NOT NULL,
+    url_canva TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (mes, anio)
+);
+
+-- Enable RLS for enlaces_mensuales
+ALTER TABLE enlaces_mensuales ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permitir todo a usuarios autenticados" ON enlaces_mensuales
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
 -- Create Realtime publication channel publication subscriptions
--- Note: You should enable Realtime for 'publicaciones' and 'especialistas' tables 
+-- Note: You should enable Realtime for 'publicaciones', 'especialistas', and 'enlaces_mensuales' tables 
 -- in the Supabase Dashboard under Database -> Replication -> supabase_realtime.

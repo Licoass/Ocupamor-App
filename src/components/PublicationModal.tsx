@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Publication, PublicationFormat, PublicationStatus } from '../types';
 import { useData } from '../context/DataContext';
-import { X, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { X, Check, AlertCircle, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface PublicationModalProps {
   publication: Publication | null; // null if creating a new one
@@ -42,6 +42,20 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
 
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Specialists dropdown selection state
+  const [isSpecDropdownOpen, setIsSpecDropdownOpen] = useState(false);
+  const specDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (specDropdownRef.current && !specDropdownRef.current.contains(event.target as Node)) {
+        setIsSpecDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   
   // Track if there are unsaved changes that need to be flushed
   const isDirtyRef = useRef(false);
@@ -294,35 +308,94 @@ export const PublicationModal: React.FC<PublicationModalProps> = ({
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">
               Especialistas Asignados
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-1 border border-slate-100 rounded-xl bg-slate-50/50">
-              {specialists.map(spec => {
-                const isSelected = formState.especialistas_asignados?.includes(spec.id);
-                return (
-                  <button
-                    type="button"
-                    key={spec.id}
-                    onClick={() => handleToggleSpecialist(spec.id)}
-                    className={`
-                      flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold border transition-all duration-150
-                      ${isSelected 
-                        ? 'bg-brand-moradoDesarrollo/10 border-brand-moradoDesarrollo/30 text-brand-moradoDesarrollo' 
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }
-                    `}
-                  >
-                    <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
-                      {spec.foto_perfil ? (
-                        <img src={spec.foto_perfil} alt={spec.nombre_completo} className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="text-[8px] font-bold text-slate-500">
-                          {spec.nombre_completo.split(' ').pop()?.substring(0, 2).toUpperCase() || 'SP'}
-                        </span>
-                      )}
-                    </div>
-                    <span className="truncate">{spec.nombre_completo}</span>
-                  </button>
-                );
-              })}
+            
+            {/* Custom Premium Dropdown Container */}
+            <div ref={specDropdownRef} className="relative">
+              {/* Trigger Input-Like Bar */}
+              <div 
+                onClick={() => setIsSpecDropdownOpen(!isSpecDropdownOpen)}
+                className="w-full min-h-[42px] py-2 px-3 rounded-xl border border-slate-200 text-sm bg-white focus-within:ring-2 focus-within:ring-brand-moradoDesarrollo/10 focus-within:border-brand-moradoDesarrollo transition-all flex items-center justify-between gap-2 cursor-pointer select-none"
+              >
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {(formState.especialistas_asignados || []).length === 0 ? (
+                    <span className="text-slate-400 text-xs font-medium">Seleccionar especialistas...</span>
+                  ) : (
+                    specialists
+                      .filter(s => formState.especialistas_asignados?.includes(s.id))
+                      .map(spec => (
+                        <div 
+                          key={spec.id} 
+                          className="flex items-center gap-1 bg-brand-moradoDesarrollo/10 border border-brand-moradoDesarrollo/20 text-brand-moradoDesarrollo text-xs font-bold px-2 py-0.5 rounded-lg shrink-0"
+                          onClick={(e) => e.stopPropagation()} // Prevent opening dropdown when clicking on chip
+                        >
+                          <div className="h-4.5 w-4.5 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
+                            {spec.foto_perfil ? (
+                              <img src={spec.foto_perfil} alt={spec.nombre_completo} className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-[7px] font-bold text-slate-500">
+                                {spec.nombre_completo.split(' ').pop()?.substring(0, 2).toUpperCase() || 'SP'}
+                              </span>
+                            )}
+                          </div>
+                          <span className="max-w-[80px] truncate">{spec.nombre_completo.split(' ')[0]}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSpecialist(spec.id)}
+                            className="text-brand-moradoDesarrollo hover:text-rose-600 transition-colors ml-0.5 p-0.5"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))
+                  )}
+                </div>
+                <div className="text-slate-400 shrink-0">
+                  {isSpecDropdownOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+              </div>
+
+              {/* Absolute Dropdown Panel */}
+              {isSpecDropdownOpen && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200/80 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {specialists.map(spec => {
+                    const isSelected = formState.especialistas_asignados?.includes(spec.id);
+                    return (
+                      <div
+                        key={spec.id}
+                        onClick={() => handleToggleSpecialist(spec.id)}
+                        className={`
+                          flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-pointer select-none transition-colors
+                          ${isSelected 
+                            ? 'bg-brand-moradoDesarrollo/5 text-brand-moradoDesarrollo' 
+                            : 'text-slate-600 hover:bg-slate-50'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
+                            {spec.foto_perfil ? (
+                              <img src={spec.foto_perfil} alt={spec.nombre_completo} className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-[8px] font-bold text-slate-500">
+                                {spec.nombre_completo.split(' ').pop()?.substring(0, 2).toUpperCase() || 'SP'}
+                              </span>
+                            )}
+                          </div>
+                          <span className="truncate">{spec.nombre_completo}</span>
+                        </div>
+                        <div className="flex items-center shrink-0 ml-2">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            readOnly
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-brand-moradoDesarrollo focus:ring-brand-moradoDesarrollo"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 

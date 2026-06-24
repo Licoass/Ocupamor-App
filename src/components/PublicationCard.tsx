@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Publication, Specialist } from '../types';
-import { Edit3, Trash2, Calendar, FileText, Film, Layers, Smartphone } from 'lucide-react';
+import { Edit3, Trash2, Calendar, FileText, Film, Layers, Smartphone, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface PublicationCardProps {
   publication: Publication;
@@ -15,6 +15,7 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
   onEdit,
   onDelete
 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const specialtyColor = publication.especialidades?.color_tema || '#94a3b8';
   const format = publication.formato;
   const status = publication.estado;
@@ -91,7 +92,8 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
 
   return (
     <div 
-      className="glass-card flex flex-col justify-between p-5 rounded-2xl border-l-[6px] hover-lift hover-glow h-full"
+      onClick={() => setIsExpanded(!isExpanded)}
+      className="glass-card flex flex-col justify-between p-5 rounded-2xl border-l-[6px] hover-lift hover-glow h-full cursor-pointer transition-all duration-200 select-none"
       style={{ borderLeftColor: specialtyColor }}
     >
       <div className="space-y-3">
@@ -105,20 +107,67 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
           <div className="flex items-center gap-1 text-slate-400">
             <Calendar size={12} />
             <span>{formatDateSpanish(publication.deadline)}</span>
+            {isExpanded ? <ChevronUp size={14} className="text-slate-500 ml-1 shrink-0 animate-in fade-in" /> : <ChevronDown size={14} className="text-slate-400 ml-1 shrink-0 animate-in fade-in" />}
           </div>
         </div>
 
         {/* Title & Description */}
         <div>
-          <h3 className="font-display font-bold text-slate-800 text-sm leading-snug line-clamp-2" title={publication.titulo}>
+          <h3 className={`font-display font-bold text-slate-800 text-sm leading-snug ${isExpanded ? '' : 'line-clamp-2'}`} title={publication.titulo}>
             {publication.titulo}
           </h3>
           {publication.descripcion && (
-            <p className="text-slate-400 text-xs font-medium mt-1.5 line-clamp-3 leading-relaxed">
+            <p className={`text-slate-400 text-xs font-medium mt-1.5 leading-relaxed ${isExpanded ? '' : 'line-clamp-3'}`}>
               {publication.descripcion}
             </p>
           )}
         </div>
+
+        {/* Expanded metadata details */}
+        {isExpanded && (
+          <div className="space-y-3 pt-3 border-t border-slate-100/60 mt-2 animate-in fade-in slide-in-from-top-1 duration-150">
+            {publication.notas_internas && (
+              <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] text-slate-500">
+                <span className="font-bold text-[9px] text-slate-400 uppercase tracking-wider block mb-0.5">Notas Internas</span>
+                {publication.notas_internas}
+              </div>
+            )}
+            
+            {publication.url_drive_revision && (
+              <a 
+                href={publication.url_drive_revision}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="w-full text-center block text-[10px] font-bold text-brand-moradoDesarrollo bg-brand-moradoDesarrollo/5 hover:bg-brand-moradoDesarrollo/10 border border-brand-moradoDesarrollo/10 rounded-xl py-2.5 transition-all"
+              >
+                🔗 Abrir Enlace de Revisión
+              </a>
+            )}
+
+            {assignedSpecs.length > 0 && (
+              <div className="space-y-1 pt-1">
+                <span className="font-bold text-[9px] text-slate-400 uppercase tracking-wider block">Especialistas Asignados:</span>
+                <div className="flex flex-col gap-1.5">
+                  {assignedSpecs.map(spec => (
+                    <div key={spec.id} className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                      <div className="h-5.5 w-5.5 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200/50">
+                        {spec.foto_perfil ? (
+                          <img src={spec.foto_perfil} alt={spec.nombre_completo} className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-[8px] font-bold text-slate-500">
+                            {spec.nombre_completo.split(' ').pop()?.substring(0, 2).toUpperCase() || 'SP'}
+                          </span>
+                        )}
+                      </div>
+                      <span>{spec.nombre_completo}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-4 pt-4 border-t border-slate-50 mt-4">
@@ -170,14 +219,14 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
           {/* Action Buttons */}
           <div className="flex items-center gap-1">
             <button
-              onClick={() => onEdit(publication)}
+              onClick={(e) => { e.stopPropagation(); onEdit(publication); }}
               className="p-1.5 text-slate-400 hover:text-brand-moradoDesarrollo hover:bg-slate-50 rounded-lg transition-colors"
               title="Editar publicación"
             >
               <Edit3 size={15} />
             </button>
             <button
-              onClick={() => onDelete(publication.id)}
+              onClick={(e) => { e.stopPropagation(); onDelete(publication.id); }}
               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-50 rounded-lg transition-colors"
               title="Eliminar publicación"
             >
