@@ -27,6 +27,8 @@ interface DataContextType {
   setActiveTab: (tab: 'planificador' | 'especialistas' | 'historial') => void;
   focusedPublicationId: string | null;
   setFocusedPublicationId: (id: string | null) => void;
+  isReadOnly: boolean;
+  setIsReadOnly: (readOnly: boolean) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -47,6 +49,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'planificador' | 'especialistas' | 'historial'>('planificador');
   const [focusedPublicationId, setFocusedPublicationId] = useState<string | null>(null);
+  const [isReadOnly, setIsReadOnly] = useState<boolean>(() => {
+    return localStorage.getItem('ocupamor_readonly') === 'true';
+  });
   
   // Track what field the current user is active in, to identify edits conflicts
   const [activeEditing, setActiveEditing] = useState<{ id: string; type: 'publication' | 'specialist'; field: string } | null>(null);
@@ -546,7 +551,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       activeTab,
       setActiveTab,
       focusedPublicationId,
-      setFocusedPublicationId
+      setFocusedPublicationId,
+      isReadOnly,
+      setIsReadOnly
     }}>
       {children}
     </DataContext.Provider>

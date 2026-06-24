@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
+import { useData } from '../context/DataContext';
 import { Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import logo from '../../Logo Ocupamor Editable.png';
 
@@ -8,6 +9,7 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+  const { setIsReadOnly } = useData();
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,12 +22,17 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setLoading(true);
     setError(null);
 
-    // Validate password input
-    if (password !== 'Ocupamor2026') {
+    const isEditor = password === 'Ocupamor2026';
+    const isReader = password === 'OcupamorLector';
+
+    if (!isEditor && !isReader) {
       setError('Contraseña incorrecta. Por favor, intente de nuevo.');
       setLoading(false);
       return;
     }
+
+    setIsReadOnly(isReader);
+    localStorage.setItem('ocupamor_readonly', isReader ? 'true' : 'false');
 
     try {
       // Authenticate with Supabase Auth using a shared admin account
@@ -124,6 +131,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           >
             {loading ? 'Iniciando sesión...' : 'Entrar'}
           </button>
+          <p className="text-[10px] text-slate-400 text-center font-bold uppercase tracking-wider mt-2.5">
+            Claves: <span className="text-slate-600 font-extrabold">Ocupamor2026</span> (Editor) • <span className="text-slate-600 font-extrabold">OcupamorLector</span> (Modo Lector)
+          </p>
         </form>
         
         {/* Footer info */}

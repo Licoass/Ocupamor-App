@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Specialist } from '../types';
+import { useData } from '../context/DataContext';
 import { FolderOpen, Edit3, Trash2, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 
 const InstagramIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -31,6 +32,7 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
   onDelete,
   onViewDetails
 }) => {
+  const { isReadOnly } = useData();
   const hasBirthday = !!specialist.fecha_cumpleanos;
 
   // Instagram URL resolver
@@ -167,20 +169,24 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
           >
             <FolderOpen size={16} />
           </a>
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(specialist); }}
-            className="p-1.5 text-slate-400 hover:text-brand-moradoDesarrollo hover:bg-slate-50 rounded-lg transition-colors"
-            title="Editar especialista"
-          >
-            <Edit3 size={15} />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(specialist.id); }}
-            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-50 rounded-lg transition-colors"
-            title="Eliminar especialista"
-          >
-            <Trash2 size={15} />
-          </button>
+          {!isReadOnly && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(specialist); }}
+                className="p-1.5 text-slate-400 hover:text-brand-moradoDesarrollo hover:bg-slate-50 rounded-lg transition-colors"
+                title="Editar especialista"
+              >
+                <Edit3 size={15} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(specialist.id); }}
+                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-50 rounded-lg transition-colors"
+                title="Eliminar especialista"
+              >
+                <Trash2 size={15} />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

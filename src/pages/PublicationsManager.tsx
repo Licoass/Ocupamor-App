@@ -21,7 +21,8 @@ export const PublicationsManager: React.FC = () => {
     importPublications, 
     importEfemerides,
     saveMonthlyLink,
-    focusedPublicationId
+    focusedPublicationId,
+    isReadOnly
   } = useData();
 
   // Selected Month/Year state
@@ -634,24 +635,28 @@ export const PublicationsManager: React.FC = () => {
           </span>
           <div className="flex items-center gap-2 flex-wrap">
             {/* Cargar Excel Button */}
-            <button
-              onClick={() => excelInputRef.current?.click()}
-              className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 rounded-xl px-3 py-1.5 flex items-center gap-1.5 transition-all duration-200 hover-lift shadow-sm shadow-emerald-500/5"
-              title="Cargar archivo Excel con planificación de actividades (.xlsx)"
-            >
-              <FileSpreadsheet size={14} className="text-emerald-600" />
-              <span>Cargar Excel</span>
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={() => excelInputRef.current?.click()}
+                className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 rounded-xl px-3 py-1.5 flex items-center gap-1.5 transition-all duration-200 hover-lift shadow-sm shadow-emerald-500/5"
+                title="Cargar archivo Excel con planificación de actividades (.xlsx)"
+              >
+                <FileSpreadsheet size={14} className="text-emerald-600" />
+                <span>Cargar Excel</span>
+              </button>
+            )}
 
             {/* Cargar Calendario Button */}
-            <button
-              onClick={() => calendarInputRef.current?.click()}
-              className="text-xs font-bold text-brand-moradoDesarrollo bg-brand-moradoDesarrollo/5 hover:bg-brand-moradoDesarrollo/10 border border-brand-moradoDesarrollo/10 rounded-xl px-3 py-1.5 flex items-center gap-1.5 transition-all duration-200 hover-lift shadow-sm shadow-brand-moradoDesarrollo/5"
-              title="Cargar archivo de calendario con feriados y efemérides (.ics)"
-            >
-              <Upload size={14} className="text-brand-moradoDesarrollo" />
-              <span>Cargar Efemérides</span>
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={() => calendarInputRef.current?.click()}
+                className="text-xs font-bold text-brand-moradoDesarrollo bg-brand-moradoDesarrollo/5 hover:bg-brand-moradoDesarrollo/10 border border-brand-moradoDesarrollo/10 rounded-xl px-3 py-1.5 flex items-center gap-1.5 transition-all duration-200 hover-lift shadow-sm shadow-brand-moradoDesarrollo/5"
+                title="Cargar archivo de calendario con feriados y efemérides (.ics)"
+              >
+                <Upload size={14} className="text-brand-moradoDesarrollo" />
+                <span>Cargar Efemérides</span>
+              </button>
+            )}
 
             <select 
               value={selectedYear} 
@@ -738,13 +743,15 @@ export const PublicationsManager: React.FC = () => {
         {/* Canva review link card */}
         <div className="col-span-2 lg:col-span-1 bg-brand-fucsiaEmocion text-white rounded-2xl p-4 shadow-md shadow-brand-fucsiaEmocion/20 flex flex-col justify-center items-center text-center gap-1 hover-lift transition-all relative group select-none">
           {/* Edit Button in corner */}
-          <button 
-            onClick={(e) => { e.stopPropagation(); handleEditLinkOpen(); }}
-            className="absolute top-2 right-2 p-1 rounded-lg bg-black/10 hover:bg-black/25 text-white/90 transition-all opacity-80 hover:scale-105"
-            title="Configurar enlace de Canva para este mes"
-          >
-            <Edit3 size={12} />
-          </button>
+          {!isReadOnly && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); handleEditLinkOpen(); }}
+              className="absolute top-2 right-2 p-1 rounded-lg bg-black/10 hover:bg-black/25 text-white/90 transition-all opacity-80 hover:scale-105"
+              title="Configurar enlace de Canva para este mes"
+            >
+              <Edit3 size={12} />
+            </button>
+          )}
           
           <Share2 size={20} className="mb-0.5" />
           <span className="text-xs font-bold">Diseños en Canva</span>
@@ -793,13 +800,15 @@ export const PublicationsManager: React.FC = () => {
                         <span className="font-bold text-brand-moradoDesarrollo">Día {b.dia}:</span>
                         <span className="font-semibold text-slate-700">{b.nombre}</span>
                       </div>
-                      <button 
-                        onClick={() => handleSuggestPost(b.nombre, b.dia)}
-                        className="flex items-center gap-1 text-[10px] font-bold text-brand-fucsiaEmocion hover:text-brand-fucsiaEmocion/80"
-                      >
-                        <Plus size={12} />
-                        <span>+ Post</span>
-                      </button>
+                      {!isReadOnly && (
+                        <button 
+                          onClick={() => handleSuggestPost(b.nombre, b.dia)}
+                          className="flex items-center gap-1 text-[10px] font-bold text-brand-fucsiaEmocion hover:text-brand-fucsiaEmocion/80"
+                        >
+                          <Plus size={12} />
+                          <span>+ Post</span>
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -817,7 +826,7 @@ export const PublicationsManager: React.FC = () => {
                         <span className="font-bold text-slate-500">Día {h.dia}:</span>
                         <span className="font-semibold text-slate-700 truncate" title={h.nombre}>{h.nombre}</span>
                       </div>
-                      {h.sugerencia_post && (
+                      {!isReadOnly && h.sugerencia_post && (
                         <button 
                           onClick={() => handleSuggestPost(h.nombre, h.dia)}
                           className="flex items-center gap-1 text-[10px] font-bold text-brand-fucsiaEmocion hover:text-brand-fucsiaEmocion/80 shrink-0"
@@ -891,13 +900,15 @@ export const PublicationsManager: React.FC = () => {
         </div>
 
         {/* Add Design button */}
-        <button
-          onClick={handleCreate}
-          className="bg-brand-moradoDesarrollo hover:bg-brand-moradoDesarrollo/95 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-brand-moradoDesarrollo/10 shrink-0"
-        >
-          <Plus size={16} />
-          <span>Agregar Diseño</span>
-        </button>
+        {!isReadOnly && (
+          <button
+            onClick={handleCreate}
+            className="bg-brand-moradoDesarrollo hover:bg-brand-moradoDesarrollo/95 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-brand-moradoDesarrollo/10 shrink-0"
+          >
+            <Plus size={16} />
+            <span>Agregar Diseño</span>
+          </button>
+        )}
       </div>
 
       {/* Publications Grid */}

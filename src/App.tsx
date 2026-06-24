@@ -38,6 +38,7 @@ function MainApp() {
 
   const handleLogout = async () => {
     localStorage.removeItem('ocupamor_session_mock');
+    localStorage.removeItem('ocupamor_readonly');
     await supabase.auth.signOut();
     setIsAuthenticated(false);
   };

@@ -16,7 +16,7 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
   onEdit,
   onDelete
 }) => {
-  const { focusedPublicationId, setFocusedPublicationId } = useData();
+  const { focusedPublicationId, setFocusedPublicationId, isReadOnly } = useData();
   const [isExpanded, setIsExpanded] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -240,22 +240,24 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(publication); }}
-              className="p-1.5 text-slate-400 hover:text-brand-moradoDesarrollo hover:bg-slate-50 rounded-lg transition-colors"
-              title="Editar publicación"
-            >
-              <Edit3 size={15} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(publication.id); }}
-              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-50 rounded-lg transition-colors"
-              title="Eliminar publicación"
-            >
-              <Trash2 size={15} />
-            </button>
-          </div>
+          {!isReadOnly && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(publication); }}
+                className="p-1.5 text-slate-400 hover:text-brand-moradoDesarrollo hover:bg-slate-50 rounded-lg transition-colors"
+                title="Editar publicación"
+              >
+                <Edit3 size={15} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(publication.id); }}
+                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-50 rounded-lg transition-colors"
+                title="Eliminar publicación"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

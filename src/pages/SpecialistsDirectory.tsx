@@ -7,7 +7,7 @@ import { SpecialistDetailsModal } from '../components/SpecialistDetailsModal';
 import { Plus, Users } from 'lucide-react';
 
 export const SpecialistsDirectory: React.FC = () => {
-  const { specialists, specialties, deleteSpecialist } = useData();
+  const { specialists, specialties, deleteSpecialist, isReadOnly } = useData();
 
   // Active specialty filter ('all' or specialty UUID)
   const [activeSpecialtyId, setActiveSpecialtyId] = useState<string>('all');
@@ -176,13 +176,15 @@ export const SpecialistsDirectory: React.FC = () => {
             </p>
           </div>
 
-          <button
-            onClick={handleCreate}
-            className="bg-brand-moradoDesarrollo hover:bg-brand-moradoDesarrollo/95 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-sm shadow-brand-moradoDesarrollo/10"
-          >
-            <Plus size={16} />
-            <span>Agregar Especialista</span>
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={handleCreate}
+              className="bg-brand-moradoDesarrollo hover:bg-brand-moradoDesarrollo/95 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-sm shadow-brand-moradoDesarrollo/10"
+            >
+              <Plus size={16} />
+              <span>Agregar Especialista</span>
+            </button>
+          )}
         </div>
 
         {/* Specialists grid */}
