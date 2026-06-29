@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { useData } from '../context/DataContext';
-import type { Publication, Efemeride } from '../types';
+import type { Publication, Efemeride, FixedLink } from '../types';
 import { PublicationCard } from '../components/PublicationCard';
 import { PublicationModal } from '../components/PublicationModal';
 import { 
   Plus, Calendar as CalendarIcon, ClipboardList, Clock, 
   CheckCircle, FileText, ChevronDown, ChevronUp, Share2,
-  Upload, FileSpreadsheet, AlertCircle, X, Edit3
+  Upload, FileSpreadsheet, AlertCircle, X, Edit3, Pin, Trash2, ExternalLink
 } from 'lucide-react';
 
 export const PublicationsManager: React.FC = () => {
@@ -17,6 +17,9 @@ export const PublicationsManager: React.FC = () => {
     specialties, 
     efemerides, 
     monthlyLinks,
+    fixedLinks,
+    saveFixedLink,
+    deleteFixedLink,
     deletePublication, 
     importPublications, 
     importEfemerides,
@@ -470,6 +473,12 @@ export const PublicationsManager: React.FC = () => {
   const [isEditingLink, setIsEditingLink] = useState(false);
   const [tempLink, setTempLink] = useState('');
 
+  // Local state to manage fixed links edit modal
+  const [isEditingFixedLink, setIsEditingFixedLink] = useState(false);
+  const [editingFixedLink, setEditingFixedLink] = useState<FixedLink | null>(null);
+  const [fixedLinkName, setFixedLinkName] = useState('');
+  const [fixedLinkUrl, setFixedLinkUrl] = useState('');
+
   // Fetch Canva link for the currently selected month and year
   const currentMonthlyLink = useMemo(() => {
     return monthlyLinks.find(l => l.mes === selectedMonth && l.anio === selectedYear);
@@ -483,6 +492,36 @@ export const PublicationsManager: React.FC = () => {
   const handleSaveLink = async () => {
     await saveMonthlyLink(selectedMonth, selectedYear, tempLink.trim() || null);
     setIsEditingLink(false);
+  };
+
+  const handleAddFixedLinkOpen = () => {
+    setEditingFixedLink(null);
+    setFixedLinkName('');
+    setFixedLinkUrl('');
+    setIsEditingFixedLink(true);
+  };
+
+  const handleEditFixedLinkOpen = (link: FixedLink) => {
+    setEditingFixedLink(link);
+    setFixedLinkName(link.nombre);
+    setFixedLinkUrl(link.url);
+    setIsEditingFixedLink(true);
+  };
+
+  const handleSaveFixedLink = async () => {
+    if (!fixedLinkName.trim() || !fixedLinkUrl.trim()) return;
+    await saveFixedLink({
+      id: editingFixedLink?.id,
+      nombre: fixedLinkName.trim(),
+      url: fixedLinkUrl.trim()
+    });
+    setIsEditingFixedLink(false);
+  };
+
+  const handleDeleteFixedLink = async (id: string) => {
+    if (window.confirm('¿Está seguro de que desea eliminar este enlace fijo?')) {
+      await deleteFixedLink(id);
+    }
   };
 
   // Filter publications by current month and year
@@ -772,6 +811,67 @@ export const PublicationsManager: React.FC = () => {
         </div>
       </div>
 
+      {/* Pinned/Fixed links ribbon */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-2 text-slate-800">
+          <Pin size={16} className="text-brand-moradoDesarrollo rotate-45" />
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Enlaces Fijos y Recursos</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 flex-1 md:justify-end">
+          {fixedLinks.length > 0 ? (
+            fixedLinks.map((link) => (
+              <div 
+                key={link.id} 
+                className="group relative flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-semibold text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-800 hover:border-slate-300"
+              >
+                <a 
+                  href={link.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 hover:underline"
+                >
+                  <span>{link.nombre}</span>
+                  <ExternalLink size={11} className="opacity-60" />
+                </a>
+
+                {!isReadOnly && (
+                  <div className="flex items-center gap-0.5 ml-1 border-l border-slate-200 pl-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => handleEditFixedLinkOpen(link)}
+                      className="p-0.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors"
+                      title="Editar enlace"
+                    >
+                      <Edit3 size={11} />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteFixedLink(link.id)}
+                      className="p-0.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      title="Eliminar enlace"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <span className="text-xs italic text-slate-400">No hay enlaces fijos configurados.</span>
+          )}
+
+          {!isReadOnly && (
+            <button
+              onClick={handleAddFixedLinkOpen}
+              className="text-xs font-bold text-brand-moradoDesarrollo bg-brand-moradoDesarrollo/5 hover:bg-brand-moradoDesarrollo/10 border border-brand-moradoDesarrollo/10 rounded-xl px-3 py-1.5 flex items-center gap-1 transition-all duration-200 hover-lift shadow-sm"
+              title="Añadir enlace fijo"
+            >
+              <Plus size={13} />
+              <span>Nuevo Enlace</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Expandable holidays & special dates panel */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <button
@@ -978,6 +1078,69 @@ export const PublicationsManager: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSaveLink}
+                className="px-4 py-1.5 bg-brand-moradoDesarrollo hover:bg-brand-moradoDesarrollo/95 text-white text-xs font-bold rounded-xl shadow-sm shadow-brand-moradoDesarrollo/10 transition-colors"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fixed Link Add/Edit Modal */}
+      {isEditingFixedLink && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">
+                {editingFixedLink ? 'Editar Enlace Fijo' : 'Añadir Enlace Fijo'}
+              </h3>
+              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                Recursos constantes del proyecto
+              </p>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Nombre del Enlace
+                </label>
+                <input
+                  type="text"
+                  value={fixedLinkName}
+                  onChange={(e) => setFixedLinkName(e.target.value)}
+                  placeholder="Ej. Drive de Recursos"
+                  className="w-full py-2.5 px-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand-moradoDesarrollo/10 focus:border-brand-moradoDesarrollo transition-all"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Dirección URL
+                </label>
+                <input
+                  type="url"
+                  value={fixedLinkUrl}
+                  onChange={(e) => setFixedLinkUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full py-2.5 px-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand-moradoDesarrollo/10 focus:border-brand-moradoDesarrollo transition-all"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsEditingFixedLink(false)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveFixedLink}
                 className="px-4 py-1.5 bg-brand-moradoDesarrollo hover:bg-brand-moradoDesarrollo/95 text-white text-xs font-bold rounded-xl shadow-sm shadow-brand-moradoDesarrollo/10 transition-colors"
               >
                 Guardar

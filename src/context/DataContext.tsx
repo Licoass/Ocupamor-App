@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
-import type { Specialty, Specialist, Publication, Efemeride, MonthlyLink } from '../types';
+import type { Specialty, Specialist, Publication, Efemeride, MonthlyLink, FixedLink } from '../types';
 
 interface DataContextType {
   publications: Publication[];
@@ -8,6 +8,8 @@ interface DataContextType {
   specialties: Specialty[];
   efemerides: Efemeride[];
   monthlyLinks: MonthlyLink[];
+  fixedLinks: FixedLink[];
+  hasFixedLinksTable: boolean;
   syncStatus: 'synced' | 'syncing' | 'error';
   errorMessage: string | null;
   activeEditing: { id: string; type: 'publication' | 'specialist'; field: string } | null;
@@ -19,6 +21,8 @@ interface DataContextType {
   importPublications: (parsedPubs: any[]) => Promise<{ successCount: number; skippedCount: number }>;
   importEfemerides: (parsedEfemerides: any[]) => Promise<{ successCount: number; skippedCount: number }>;
   saveMonthlyLink: (mes: number, anio: number, urlCanva: string | null) => Promise<boolean>;
+  saveFixedLink: (link: Partial<FixedLink>) => Promise<boolean>;
+  deleteFixedLink: (id: string) => Promise<boolean>;
   fetchData: () => Promise<void>;
   conflictNotification: string | null;
   setConflictNotification: (msg: string | null) => void;
@@ -45,6 +49,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [efemerides, setEfemerides] = useState<Efemeride[]>([]);
   const [monthlyLinks, setMonthlyLinks] = useState<MonthlyLink[]>([]);
+  const [fixedLinks, setFixedLinks] = useState<FixedLink[]>([]);
+  const [hasFixedLinksTable, setHasFixedLinksTable] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('syncing');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'planificador' | 'especialistas' | 'historial'>('planificador');
@@ -111,6 +117,41 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select('*');
       if (linkErr) throw linkErr;
       setMonthlyLinks(linkData || []);
+
+      // 6. Check and fetch fixed links (Hybrid mode)
+      let hasTable = false;
+      try {
+        const { data: fixedData, error: fixedErr } = await supabase
+          .from('enlaces_fijos')
+          .select('*')
+          .order('created_at', { ascending: true });
+        
+        if (!fixedErr) {
+          hasTable = true;
+          setFixedLinks(fixedData || []);
+          setHasFixedLinksTable(true);
+        } else {
+          console.warn('Fixed links table not found or not accessible. Using fallback JSON storage in monthly links.', fixedErr.message);
+          setHasFixedLinksTable(false);
+        }
+      } catch (err) {
+        console.warn('Error checking enlaces_fijos table, falling back.', err);
+        setHasFixedLinksTable(false);
+      }
+
+      if (!hasTable) {
+        const fallbackRecord = (linkData || []).find(l => l.mes === 12 && l.anio === 9999);
+        if (fallbackRecord && fallbackRecord.url_canva) {
+          try {
+            setFixedLinks(JSON.parse(fallbackRecord.url_canva) as FixedLink[]);
+          } catch (e) {
+            console.error('Error parsing fixed links fallback JSON:', e);
+            setFixedLinks([]);
+          }
+        } else {
+          setFixedLinks([]);
+        }
+      }
 
       setSyncStatus('synced');
     } catch (err: any) {
@@ -239,15 +280,72 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Setup Realtime subscription for enlaces_fijos if table exists
+  useEffect(() => {
+    if (!hasFixedLinksTable) return;
+
+    const fixedChannel = supabase.channel('realtime-fixed-links-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'enlaces_fijos' }, (payload) => {
+        const { eventType, new: newRecord, old: oldRecord } = payload;
+        setFixedLinks(current => {
+          if (eventType === 'INSERT') {
+            if (current.some(l => l.id === newRecord.id)) return current;
+            return [...current, newRecord as FixedLink];
+          }
+          if (eventType === 'UPDATE') {
+            return current.map(l => l.id === newRecord.id ? (newRecord as FixedLink) : l);
+          }
+          if (eventType === 'DELETE') {
+            return current.filter(l => l.id !== oldRecord.id);
+          }
+          return current;
+        });
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+          console.warn('Realtime channel warning: Fixed links replication offline. Falling back to REST polling.');
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(fixedChannel);
+    };
+  }, [hasFixedLinksTable]);
+
+  // Keep fixed links in sync with monthly links when using the fallback JSON storage
+  useEffect(() => {
+    if (!hasFixedLinksTable) {
+      const record = monthlyLinks.find(l => l.mes === 12 && l.anio === 9999);
+      if (record && record.url_canva) {
+        try {
+          const parsed = JSON.parse(record.url_canva) as FixedLink[];
+          if (JSON.stringify(parsed) !== JSON.stringify(fixedLinks)) {
+            setFixedLinks(parsed);
+          }
+        } catch (e) {
+          console.error('Error parsing fallback fixed links:', e);
+        }
+      } else {
+        if (fixedLinks.length > 0) {
+          setFixedLinks([]);
+        }
+      }
+    }
+  }, [monthlyLinks, hasFixedLinksTable, fixedLinks]);
+
   // Operations: Publications
   const savePublication = async (pub: Partial<Publication>) => {
     setSyncStatus('syncing');
     try {
-      const isNew = !pub.id;
+      const isNew = !pub.id || pub.id === '';
       const payload = {
         ...pub,
         updated_at: new Date().toISOString()
       };
+
+      if (isNew) {
+        delete payload.id;
+      }
 
       if (payload.deadline === '') {
         payload.deadline = null;
@@ -527,6 +625,157 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const saveFixedLink = async (link: Partial<FixedLink>) => {
+    setSyncStatus('syncing');
+    try {
+      if (hasFixedLinksTable) {
+        // Native table mode
+        const isNew = !link.id;
+        const payload = {
+          ...link,
+          updated_at: new Date().toISOString()
+        };
+        if (isNew) {
+          delete payload.id;
+        }
+
+        let data, error;
+        if (isNew) {
+          ({ data, error } = await supabase.from('enlaces_fijos').insert(payload).select());
+        } else {
+          ({ data, error } = await supabase.from('enlaces_fijos').update(payload).eq('id', link.id).select());
+        }
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const saved = data[0] as FixedLink;
+          setFixedLinks(current => {
+            if (isNew) {
+              if (current.some(l => l.id === saved.id)) return current;
+              return [...current, saved];
+            } else {
+              return current.map(l => l.id === saved.id ? saved : l);
+            }
+          });
+        }
+      } else {
+        // Fallback JSON mode in enlaces_mensuales (mes = 12, anio = 9999)
+        const record = monthlyLinks.find(l => l.mes === 12 && l.anio === 9999);
+        let currentLinks: FixedLink[] = [];
+        if (record && record.url_canva) {
+          try {
+            currentLinks = JSON.parse(record.url_canva);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        const isNew = !link.id;
+        let updatedLink: FixedLink;
+        let newLinks: FixedLink[];
+
+        if (isNew) {
+          updatedLink = {
+            id: Math.random().toString(36).substring(2, 11),
+            nombre: link.nombre || '',
+            url: link.url || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          newLinks = [...currentLinks, updatedLink];
+        } else {
+          updatedLink = {
+            ...(currentLinks.find(l => l.id === link.id) || {}),
+            ...link,
+            updated_at: new Date().toISOString()
+          } as FixedLink;
+          newLinks = currentLinks.map(l => l.id === link.id ? updatedLink : l);
+        }
+
+        const jsonStr = JSON.stringify(newLinks);
+        const { data, error } = await supabase
+          .from('enlaces_mensuales')
+          .upsert({ mes: 12, anio: 9999, url_canva: jsonStr }, { onConflict: 'mes,anio' })
+          .select();
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setMonthlyLinks(current => {
+            const updated = data[0] as MonthlyLink;
+            if (current.some(l => l.id === updated.id || (l.mes === updated.mes && l.anio === updated.anio))) {
+              return current.map(l => (l.id === updated.id || (l.mes === updated.mes && l.anio === updated.anio)) ? updated : l);
+            } else {
+              return [...current, updated];
+            }
+          });
+        }
+      }
+
+      setSyncStatus('synced');
+      return true;
+    } catch (err: any) {
+      console.error('Error saving fixed link:', err);
+      setSyncStatus('error');
+      setErrorMessage(err.message || 'Error al guardar el enlace fijo.');
+      return false;
+    }
+  };
+
+  const deleteFixedLink = async (id: string) => {
+    setSyncStatus('syncing');
+    try {
+      if (hasFixedLinksTable) {
+        // Native table mode
+        const { error } = await supabase.from('enlaces_fijos').delete().eq('id', id);
+        if (error) throw error;
+
+        setFixedLinks(current => current.filter(l => l.id !== id));
+      } else {
+        // Fallback JSON mode
+        const record = monthlyLinks.find(l => l.mes === 12 && l.anio === 9999);
+        if (!record || !record.url_canva) return false;
+
+        let currentLinks: FixedLink[] = [];
+        try {
+          currentLinks = JSON.parse(record.url_canva);
+        } catch (e) {
+          console.error(e);
+        }
+
+        const newLinks = currentLinks.filter(l => l.id !== id);
+        const jsonStr = JSON.stringify(newLinks);
+
+        const { data, error } = await supabase
+          .from('enlaces_mensuales')
+          .upsert({ mes: 12, anio: 9999, url_canva: jsonStr }, { onConflict: 'mes,anio' })
+          .select();
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setMonthlyLinks(current => {
+            const updated = data[0] as MonthlyLink;
+            if (current.some(l => l.id === updated.id || (l.mes === updated.mes && l.anio === updated.anio))) {
+              return current.map(l => (l.id === updated.id || (l.mes === updated.mes && l.anio === updated.anio)) ? updated : l);
+            } else {
+              return [...current, updated];
+            }
+          });
+        }
+      }
+
+      setSyncStatus('synced');
+      return true;
+    } catch (err: any) {
+      console.error('Error deleting fixed link:', err);
+      setSyncStatus('error');
+      setErrorMessage(err.message || 'Error al eliminar el enlace fijo.');
+      return false;
+    }
+  };
+
   return (
     <DataContext.Provider value={{
       publications,
@@ -534,6 +783,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       specialties,
       efemerides,
       monthlyLinks,
+      fixedLinks,
+      hasFixedLinksTable,
       syncStatus,
       errorMessage,
       activeEditing,
@@ -545,6 +796,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       importPublications,
       importEfemerides,
       saveMonthlyLink,
+      saveFixedLink,
+      deleteFixedLink,
       fetchData,
       conflictNotification,
       setConflictNotification,
